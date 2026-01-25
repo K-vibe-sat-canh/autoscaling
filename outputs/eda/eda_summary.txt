@@ -1,0 +1,45 @@
+
+NASA HTTP Traffic - EDA Summary
+================================
+
+Dataset Overview:
+- Time Period: 1995-07-01 to 1995-08-31
+- Total Duration: 61 days
+- Resolution Used: 5-minute intervals
+- Total Records: 17,856
+
+Missing Data (Outage):
+- Outage Period: 1995-08-01 14:55:00-04:00 to 1995-08-03 04:35:00-04:00
+- Duration: ~37.7 hours
+- Affected Records: 453 (2.54%)
+
+Traffic Statistics (excluding outage):
+- Mean Request Count: 198.91 per 5min
+- Std Dev: 138.40
+- Max Request Count: 1501 per 5min
+- Mean Bytes: 3.77 MB per 5min
+
+Status Codes:
+- 2xx (Success): 89.6%
+- 3xx (Redirect): 9.8%
+- 4xx (Client Error): 0.6%
+- 5xx (Server Error): 0.0%
+
+Patterns Observed:
+- Daily Pattern: Traffic peaks during US business hours (10:00-16:00 EST)
+- Weekly Pattern: Higher traffic on weekdays vs weekends
+- Spikes Detected: 140 instances (>614 requests/5min)
+
+Train/Test Split:
+- Train: 15,264 records (July + Aug 1-22)
+- Test: 2,592 records (Aug 23-31)
+- Split Ratio: 85.5% / 14.5%
+
+Generated Visualizations:
+1. outputs/eda/01_overall_traffic.png
+2. outputs/eda/02_daily_pattern.png
+3. outputs/eda/03_weekly_pattern.png
+4. outputs/eda/04_distribution.png
+5. outputs/eda/05_status_codes.png
+6. outputs/eda/06_spike_detection.png
+7. outputs/eda/07_train_test_split.png
