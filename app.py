@@ -5,7 +5,9 @@ from typing import List, Literal, Optional
 from fastapi import FastAPI, HTTPException, status, Request
 from pydantic import BaseModel, Field
 
+# --- CUSTOM IMPORTS ---
 from models.predictor import get_predictor
+from backend.autoscaler import AutoScaler
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -14,7 +16,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("api")
 
-app = FastAPI(title="AutoScaling Predictor API", version="1.0.0")
+app = FastAPI(title="AutoScaling Predictor API", version="1.0.0", tags=["Logic/Backend"])
+
+# --- Global State ---
+# In a distributed system, this would be in Redis/Database.
+# For this project, we keep it here to track 'last_scale_time'.
+scaler = AutoScaler()
 
 # --- Pydantic Models (Validation) ---
 
@@ -40,7 +47,9 @@ class PredictionResponse(BaseModel):
 class ScalingRequest(BaseModel):
     predicted_load: float = Field(..., gt=0)
     current_servers: int = Field(..., ge=1)
-    last_scale_time: datetime
+    # last_scale_time is optional because the backend tracks it, 
+    # but we allow the frontend to pass it if we were stateless.
+    # For now, we rely on the global 'scaler' state.
 
 class ScalingResponse(BaseModel):
     action: Literal["scale_up", "scale_down", "maintain"]
@@ -65,10 +74,11 @@ async def log_requests(request: Request, call_next):
 
 # --- Endpoints ---
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/predict", response_model=PredictionResponse, tags=["AI Modeling"])
 async def predict_load(payload: PredictionRequest):
     """
     Accepts historical data and returns future load predictions.
+    Used by M2 (Modeler) logic.
     """
     try:
         # Factory pattern to get the right model
@@ -90,42 +100,28 @@ async def predict_load(payload: PredictionRequest):
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction failed")
 
-@app.post("/recommend-scaling", response_model=ScalingResponse)
+@app.post("/recommend-scaling", response_model=ScalingResponse, tags=["Scaling Logic"])
 async def recommend_scaling(payload: ScalingRequest):
     """
-    Logic rule engine to decide whether to scale up or down.
+    Logic rule engine (M3) to decide whether to scale up or down.
+    Uses the advanced 'AutoScaler' class with cooldowns.
     """
-    # Simple Logic Rule (Beginner friendly)
-    # Assume 1 server handles 1000 requests/min comfortably
-    MAX_CAPACITY_PER_SERVER = 1000
-    COST_PER_SERVER = 0.45 
+    logger.info(f"Checking scaling for load: {payload.predicted_load} with {payload.current_servers} servers.")
     
-    # Calculate utilization
-    total_capacity = payload.current_servers * MAX_CAPACITY_PER_SERVER
-    utilization = payload.predicted_load / total_capacity if total_capacity > 0 else 1.0
+    # Delegate logic to our robust AutoScaler class
+    decision = scaler.decide_scaling_action(
+        current_servers=payload.current_servers, 
+        predicted_load=payload.predicted_load
+    )
     
-    action = "maintain"
-    target_servers = payload.current_servers
-    reason = "Load is stable within operational limits."
-
-    # Scaling Logic
-    if utilization > 0.85:
-        action = "scale_up"
-        target_servers += 1
-        reason = f"Predicted load ({payload.predicted_load}) exceeds 85% of capacity."
-    elif utilization < 0.30 and payload.current_servers > 1:
-        action = "scale_down"
-        target_servers -= 1
-        reason = f"Predicted load ({payload.predicted_load}) is below 30% of capacity."
-
     return {
-        "action": action,
-        "target_servers": target_servers,
-        "estimated_cost_per_hour": target_servers * COST_PER_SERVER,
-        "reason": reason
+        "action": decision["action"],
+        "target_servers": decision["target_servers"],
+        "estimated_cost_per_hour": scaler.calculate_cost(decision["target_servers"]),
+        "reason": decision["reason"]
     }
 
-@app.get("/metrics", response_model=MetricsResponse)
+@app.get("/metrics", response_model=MetricsResponse, tags=["Monitoring"])
 async def get_metrics():
     """
     Returns system health and model performance metrics.
@@ -140,6 +136,48 @@ async def get_metrics():
         "current_load": 450.0,
         "running_servers": 2,
         "cost_24h": 21.60
+    }
+
+@app.post("/simulate", tags=["Simulation"])
+async def run_simulation(data: List[DataPoint]):
+    """
+    P4 Deliverable: Run a simulation to calculate cost savings.
+    Compare Static vs AutoScaling.
+    """
+    # Create a fresh scaler for isolation
+    sim_scaler = AutoScaler()
+    
+    # 1. Sort data
+    sorted_data = sorted(data, key=lambda x: x.timestamp)
+    
+    total_static_cost = 0.0
+    total_auto_cost = 0.0
+    
+    STATIC_SERVER_COUNT = 10 # Baseline assumption
+    current_auto_servers = 2 # Start small
+    
+    # Iterate through data (assuming 1-minute intervals)
+    for point in sorted_data:
+        # Cost accumulation (Cost per minute = Cost per hour / 60)
+        cost_per_min = sim_scaler.cost_per_server_hour / 60.0
+        
+        total_static_cost += STATIC_SERVER_COUNT * cost_per_min
+        total_auto_cost += current_auto_servers * cost_per_min
+        
+        # Make decision for NEXT minute
+        # We assume 'requests' is the load
+        decision = sim_scaler.decide_scaling_action(
+            current_servers=current_auto_servers,
+            predicted_load=point.requests,
+            current_time=point.timestamp
+        )
+        current_auto_servers = decision["target_servers"]
+
+    return {
+        "static_cost": round(total_static_cost, 2),
+        "auto_scaling_cost": round(total_auto_cost, 2),
+        "savings": round(total_static_cost - total_auto_cost, 2),
+        "savings_percentage": round(((total_static_cost - total_auto_cost) / total_static_cost) * 100, 2)
     }
 
 @app.get("/health")
