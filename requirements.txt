@@ -7,7 +7,8 @@ pyyaml==6.0.1
 pandas==2.2.0
 numpy==1.26.0
 statsmodels==0.14.1
-# Note: Prophet and TensorFlow are heavy. 
-# Uncomment these when you are ready to train real models.
+plotly==5.18.0
+
+# AI/ML Libraries (Uncomment when needed)
 # prophet==1.1.5
 # tensorflow==2.15.0
