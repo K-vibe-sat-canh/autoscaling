@@ -9,6 +9,7 @@ numpy==1.26.0
 statsmodels==0.14.1
 plotly==5.18.0
 
+
 # AI/ML Libraries (Uncomment when needed)
 # prophet==1.1.5
 # tensorflow==2.15.0

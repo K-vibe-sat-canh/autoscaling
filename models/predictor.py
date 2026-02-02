@@ -64,9 +64,10 @@ class ARIMAPredictor(PredictionModel):
     def load_model(self, model_path):
         if os.path.exists(model_path):
             try:
-                import statsmodels.api as sm
-                self.model = sm.load(model_path)
-                logger.info(f"Loaded ARIMA model from {model_path}")
+                import pickle
+                with open(model_path, "rb") as f:
+                    self.model = pickle.load(f)
+                logger.info(f"Loaded ARIMA model from {model_path} using Pickle")
             except Exception as e:
                 logger.error(f"Failed to load ARIMA model: {e}")
         else:
@@ -80,11 +81,38 @@ class ARIMAPredictor(PredictionModel):
         last_ts = df['timestamp'].iloc[-1]
 
         if self.model:
-            # Real prediction logic would go here using self.model.forecast()
-            # This usually requires specific preprocessing
-            pass
+            try:
+                # REAL INFERENCE LOGIC
+                # 1. We have a loaded ARIMA model.
+                # 2. We want to predict 'steps_ahead' into the future.
+                
+                # Ideally, we would update the model with 'historical_data' using model.apply(),
+                # but for this cached demo, we will forecast from the end of training.
+                # This ensures stability and speed (no re-training per request).
+                
+                # 'forecast' returns a numpy array or pandas Series
+                forecast_values = self.model.forecast(steps=steps_ahead)
+                
+                predictions = []
+                current_time = pd.to_datetime(last_ts)
+                
+                # If forecast_values is a pandas Series, values are .values
+                values = forecast_values if isinstance(forecast_values, (list, np.ndarray)) else forecast_values.values
+                
+                for val in values:
+                    current_time += pd.Timedelta(minutes=1)
+                    predictions.append({
+                        "timestamp": current_time.isoformat(),
+                        "predicted_load": max(0.0, float(val)) # Ensure non-negative
+                    })
+                    
+                logger.info(f"Generated {len(predictions)} predictions using Real ARIMA.")
+                return predictions
+                
+            except Exception as e:
+                logger.error(f"Real inference failed: {e}. Falling back to mock.")
         
-        # For this example, we fallback to mock generation if model isn't fully set up
+        # Fallback if model is None or failed
         return self._generate_mock_prediction(last_ts, steps_ahead)
 
 
