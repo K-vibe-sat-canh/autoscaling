@@ -1,0 +1,5 @@
+{
+  "name": "AutoScaling Predictor",
+  "description": "A FastAPI backend and Streamlit dashboard for predicting server load and recommending scaling actions.",
+  "requestFramePermissions": []
+}

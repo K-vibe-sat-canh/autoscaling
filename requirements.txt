@@ -1,0 +1,15 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.6.0
+streamlit==1.31.0
+requests==2.31.0
+pyyaml==6.0.1
+pandas==2.2.0
+numpy==1.26.0
+statsmodels==0.14.1
+plotly==5.18.0
+
+
+# AI/ML Libraries (Uncomment when needed)
+# prophet==1.1.5
+# tensorflow==2.15.0

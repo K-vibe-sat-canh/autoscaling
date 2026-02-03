@@ -1,0 +1,18 @@
+app:
+  title: "Auto-Scaling Predictor API"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8000
+
+models:
+  arima_path: "saved_models/arima_model.pkl"
+  prophet_path: "saved_models/prophet_model.pkl"
+  lstm_path: "saved_models/lstm_model.h5"
+
+scaling:
+  max_requests_per_server: 1000
+  cost_per_server_hour: 0.45
+  cooldown_minutes: 10
+
+logging:
+  level: "INFO"
