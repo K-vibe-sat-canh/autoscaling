@@ -33,18 +33,22 @@ Xây dựng hệ thống **AI dự đoán traffic** + **Logic tự động đi�
 ### Công nghệ sử dụng
 | Thành phần | Công nghệ |
 |------------|-----------|
-| Data Pipeline | Python, Pandas |
-| AI Model | ARIMA (statsmodels) |
-| Backend API | FastAPI |
+| Data Pipeline | Python, Pandas, NumPy |
+| AI Models | **Prophet**, **XGBoost**, ARIMA |
+| Backend API | FastAPI, Uvicorn |
 | Dashboard | Streamlit, Plotly |
+| Visualization | Matplotlib, Plotly |
 
 ---
 
 ## ⚙️ Cài đặt
 
-### Yêu cầu
-- Python 3.10+
-- pip
+### Prerequisites (Yêu cầu hệ thống)
+| Yêu cầu | Phiên bản/Giá trị |
+|---------|-------------------|
+| Python | 3.10+ |
+| RAM | Tối thiểu 4GB |
+| OS | Windows / Linux / MacOS |
 
 ### Các bước
 
@@ -66,16 +70,43 @@ pip install -r requirements.txt
 
 ## 🚀 Hướng dẫn chạy
 
-### Bước 1: Tạo dữ liệu (M1)
+### ⭐ Option A: Chạy Notebook (KHUYẾN NGHỊ CHO GIÁM KHẢO)
+
+**Bước 1:** Mở VS Code hoặc Jupyter Notebook
+
+**Bước 2:** Mở file `notebooks/modeling_phase3.ipynb`
+
+**Bước 3:** Chọn kernel `.venv (Python 3.10.11)` hoặc `autoscaling`
+
+**Bước 4:** Bấm **"Run All"** để chạy từ đầu đến cuối
+
+> ⏱️ **Thời gian dự kiến:** ~2-3 phút trên CPU
+
+**Output bao gồm:**
+- ✅ Model comparison table (RMSE, MAE, MAPE)
+- ✅ Visualization: Actual vs Predicted (Prophet & XGBoost)
+- ✅ Feature Importance chart
+- ✅ Autoscaling simulation results
+
+---
+
+### Option B: Chạy từng bước
+
+#### Bước 1: Tạo dữ liệu (M1) - Đã có sẵn
 ```bash
-python src/data_pipeline.py
-# Output: data/clean_data.csv
+# Dữ liệu đã được xử lý sẵn tại processed_data/
+# Nếu cần chạy lại:
+python src/data_processing.py
 ```
 
-### Bước 2: Train model (M2)
+#### Bước 2: Train model (M2)
 ```bash
+# Cách 1: Chạy notebook (khuyến nghị)
+jupyter notebook notebooks/modeling_phase3.ipynb
+
+# Cách 2: Chạy script
 python src/model_trainer.py
-# Output: saved_models/arima_model.pkl
+# Output: saved_models/*.pkl, saved_models/*.json
 ```
 
 ### Bước 3: Chạy Backend API (M3)
@@ -124,33 +155,109 @@ run_all.bat
 ```
 uibackend/
 ├── app.py                  # FastAPI Backend
-├── dashboard/
-│   └── main.py             # Streamlit Dashboard
-├── data/
-│   └── clean_data.csv      # Dữ liệu đã xử lý
-├── saved_models/
-│   └── arima_model.pkl     # Model đã train
+├── config.yaml             # Configuration
+├── requirements.txt        # Dependencies
+├── README.md               # File này
+├── run_all.bat             # Script chạy tất cả (Windows)
+│
+├── DATA/                   # Raw data (NASA logs .txt)
+│   ├── train.txt
+│   └── test.txt
+│
+├── processed_data/         # ✅ Dữ liệu đã xử lý (CSV)
+│   ├── nasa_traffic_1m.csv
+│   ├── nasa_traffic_5m.csv   # 🎯 File chính cho modeling
+│   └── nasa_traffic_15m.csv
+│
+├── notebooks/
+│   └── modeling_phase3.ipynb # 🎯 NOTEBOOK CHÍNH - Chạy file này!
+│
 ├── src/
 │   ├── data_pipeline.py    # M1: Data Processing
+│   ├── data_processing.py  # Data cleaning
+│   ├── eda.py              # Exploratory Data Analysis
 │   └── model_trainer.py    # M2: Model Training
+│
+├── models/
+│   └── predictor.py        # Prediction model classes
+│
 ├── backend/
 │   └── autoscaler.py       # M3: Scaling Logic
-├── docs/                   # Documentation
-├── notebooks/              # EDA Notebooks
-├── requirements.txt        # Dependencies
-└── README.md               # File này
+│
+├── dashboard/
+│   └── main.py             # Streamlit Dashboard
+│
+├── saved_models/           # ✅ Models đã train
+│   ├── prophet_requests.pkl
+│   ├── prophet_bytes.pkl
+│   ├── xgb_requests.json
+│   ├── xgb_bytes.json
+│   └── metrics_summary.json
+│
+├── outputs/
+│   └── eda/                # EDA plots và summary
+│
+└── docs/                   # Documentation
 ```
 
 ---
 
-## 📊 Kết quả
+## 📊 Data Description
 
-### Model Performance (ARIMA)
-| Metric | Giá trị |
-|--------|---------|
-| RMSE | ~475 requests/min |
-| MAE | ~350 requests/min |
-| MAPE | ~14% |
+### Nguồn dữ liệu
+- **NASA HTTP Log Dataset** (Public Domain)
+- Link: https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html
+
+### Thông tin dữ liệu
+| Thuộc tính | Giá trị |
+|------------|---------|
+| Thời gian | July 1 - August 31, 1995 |
+| Tổng records | ~1.8 triệu requests |
+| Missing gap | Aug 1 (14:52) - Aug 3 (04:36) do bão |
+| Aggregation | 5 phút (288 intervals/ngày) |
+
+### Train/Test Split (Theo yêu cầu đề bài)
+| Set | Thời gian | Số samples (5min) |
+|-----|-----------|-------------------|
+| **Train** | July 1 → August 22, 1995 | 15,264 |
+| **Test** | August 23 → August 31, 1995 | 2,592 |
+
+---
+
+## 📊 Kết quả Model (Test Set: Aug 23 - Aug 31)
+
+### Model Comparison
+
+| Model | Target | RMSE | MAE | MAPE |
+|-------|--------|------|-----|------|
+| **XGBoost** ⭐ | Request Count | **43.13** | **32.36** | **25.83%** |
+| Prophet | Request Count | 86.63 | 63.80 | 45.05% |
+| **XGBoost** ⭐ | Total Bytes | **1.17M** | **894K** | **39.15%** |
+| Prophet | Total Bytes | 1.68M | 1.24M | 53.95% |
+
+> 🏆 **Winner: XGBoost** với MAPE thấp hơn ~50% so với Prophet
+
+### Feature Importance (XGBoost)
+Top 5 features quan trọng nhất:
+1. `request_lag_1` - Lag 1 interval (5 min trước)
+2. `request_rolling_mean_1h` - Trung bình 1 giờ gần nhất
+3. `request_lag_288` - Lag 1 ngày (288 intervals)
+4. `hour` - Giờ trong ngày
+5. `request_lag_12` - Lag 1 giờ
+
+### Autoscaling Simulation
+
+| Tham số | Giá trị |
+|---------|---------|
+| Capacity/server | 500 requests/5min |
+| Scale up threshold | 80% utilization |
+| Scale down threshold | 30% utilization |
+| Cooldown period | 30 phút (6 intervals) |
+
+**Kết quả:**
+- Scale up events: 5
+- Scale down events: 6
+- Server range: 1-2 servers
 
 ### Cost Simulation
 | Phương án | Chi phí (24h) |
@@ -205,6 +312,26 @@ REQ_RE = re.compile(
 
 ---
 
-## 📝 License
+## � Reproducibility Notes
+
+### Random Seed
+```python
+SEED = 42
+np.random.seed(SEED)
+random.seed(SEED)
+```
+
+### Đường dẫn
+- ✅ Sử dụng **relative paths** (không hard-code absolute paths)
+- ✅ Compatible với Windows/Linux/MacOS
+
+### Tested Environment
+- OS: Windows 11
+- Python: 3.10.11
+- RAM: 8GB
+
+---
+
+## �📝 License
 
 MIT License - Dự án phục vụ mục đích học tập và cuộc thi DataFlow 2026.
