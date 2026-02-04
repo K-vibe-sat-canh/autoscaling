@@ -414,6 +414,120 @@ def fetch_simulation_results(api_url: str, traffic_data: list) -> dict | None:
 
 
 # =============================================================================
+# API FUNCTION: GET /cost-report (NEW - FOR BONUS POINTS)
+# =============================================================================
+def fetch_cost_report(api_url: str, simulation_hours: int = 24) -> dict | None:
+    """
+    Fetches cost comparison report between Static and AutoScaling.
+    
+    API ENDPOINT:
+        GET {api_url}/cost-report?simulation_hours=24
+    
+    WHAT IT RETURNS:
+        {
+            "simulation_period": "24 hours",
+            "cost_comparison": {
+                "static_deployment": {"servers": 10, "total_cost": "$108.00"},
+                "auto_scaling": {"total_cost": "$45.20", "avg_servers": "4.2"}
+            },
+            "savings": {
+                "amount": "$62.80",
+                "percentage": "58.1%",
+                "monthly_projection": "$1884.00"
+            },
+            "conclusion": "AutoScaling tiết kiệm $62.80..."
+        }
+    
+    ARGUMENTS:
+        api_url (str): Base URL of the backend API
+        simulation_hours (int): Number of hours to simulate (default 24)
+    
+    RETURNS:
+        dict: Cost report if successful
+        None: If request fails
+    """
+    try:
+        response = requests.get(
+            f"{api_url}/cost-report",
+            params={"simulation_hours": simulation_hours},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"❌ Cost Report API Error: {response.status_code}")
+            return None
+            
+    except requests.exceptions.ConnectionError:
+        st.error("🔌 Cannot connect to Backend for cost report.")
+        return None
+        
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Cost report request timed out.")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Cost report network error: {e}")
+        return None
+
+
+# =============================================================================
+# API FUNCTION: GET /forecast (NEW - COMPETITION REQUIRED)
+# =============================================================================
+def fetch_forecast(api_url: str, timestamp: str = "now", steps: int = 4) -> dict | None:
+    """
+    Fetches traffic forecast using XGBoost model.
+    
+    API ENDPOINT:
+        GET {api_url}/forecast?timestamp=now&steps=4
+    
+    WHAT IT RETURNS:
+        {
+            "status": "success",
+            "model": "XGBoost",
+            "predictions": [
+                {"timestamp": "...", "predicted_requests": 850, "predicted_bytes": 17000000},
+                ...
+            ]
+        }
+    
+    ARGUMENTS:
+        api_url (str): Base URL of the backend API
+        timestamp (str): Starting timestamp or "now"
+        steps (int): Number of 15-min intervals to forecast
+    
+    RETURNS:
+        dict: Forecast data if successful
+        None: If request fails
+    """
+    try:
+        response = requests.get(
+            f"{api_url}/forecast",
+            params={"timestamp": timestamp, "steps": steps},
+            timeout=REQUEST_TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"❌ Forecast API Error: {response.status_code}")
+            return None
+            
+    except requests.exceptions.ConnectionError:
+        st.error("🔌 Cannot connect to Backend for forecast.")
+        return None
+        
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Forecast request timed out.")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Forecast network error: {e}")
+        return None
+
+
+# =============================================================================
 # TESTING (Only runs if this file is executed directly)
 # =============================================================================
 if __name__ == "__main__":

@@ -19,6 +19,8 @@ from utils.data_handler import (
     fetch_predictions,
     fetch_scaling_recommendation,
     fetch_simulation_results,
+    fetch_cost_report,
+    fetch_forecast,
     setup_auto_refresh
 )
 
@@ -211,7 +213,84 @@ if predict_clicked or st.session_state.get('auto_refresh', False):
             """, unsafe_allow_html=True)
 
 st.divider()
-st.markdown("## 💰 Cost Simulation")
+st.markdown("## 💰 Cost Analysis & Savings Report")
+st.markdown("**ĐIỂM CỘNG**: So sánh chi phí Static Deployment vs AutoScaling với giả định unit cost.")
+
+col_hours, col_btn = st.columns([2, 1])
+with col_hours:
+    sim_hours = st.slider("Simulation Duration (hours)", 1, 168, 24, help="Chọn số giờ để mô phỏng chi phí")
+with col_btn:
+    run_cost_report = st.button("📊 Generate Cost Report", use_container_width=True)
+
+if run_cost_report:
+    with st.spinner("🧮 Calculating costs using real NASA traffic data..."):
+        cost_report = fetch_cost_report(API_URL, sim_hours)
+    
+    if cost_report:
+        # Cost comparison cards
+        col_static, col_auto, col_save = st.columns(3)
+        
+        static_info = cost_report['cost_comparison']['static_deployment']
+        auto_info = cost_report['cost_comparison']['auto_scaling']
+        savings_info = cost_report['savings']
+        
+        with col_static:
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #331414 0%, #4a1a1a 100%); 
+                            padding: 25px; border-radius: 15px; border: 2px solid #e74c3c; text-align: center;
+                            box-shadow: 0 8px 32px rgba(231, 76, 60, 0.3);'>
+                    <h4 style='color: #e74c3c; margin: 0;'>❌ Static Deployment</h4>
+                    <h1 style='color: #ff6b6b; margin: 10px 0;'>{static_info['total_cost']}</h1>
+                    <p style='color: #999; margin: 0;'>{static_info['servers']} servers cố định</p>
+                    <p style='color: #666; font-size: 12px;'>{static_info['cost_per_hour']}/hour</p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col_auto:
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #143322 0%, #1a4a2e 100%); 
+                            padding: 25px; border-radius: 15px; border: 2px solid #2ecc71; text-align: center;
+                            box-shadow: 0 8px 32px rgba(46, 204, 113, 0.3);'>
+                    <h4 style='color: #2ecc71; margin: 0;'>✅ AutoScaling</h4>
+                    <h1 style='color: #6bff9a; margin: 10px 0;'>{auto_info['total_cost']}</h1>
+                    <p style='color: #999; margin: 0;'>Avg: {auto_info['avg_servers']} servers</p>
+                    <p style='color: #666; font-size: 12px;'>Dynamic allocation</p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col_save:
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #142233 0%, #1a3352 100%); 
+                            padding: 25px; border-radius: 15px; border: 2px solid #3498db; text-align: center;
+                            box-shadow: 0 8px 32px rgba(52, 152, 219, 0.3);'>
+                    <h4 style='color: #3498db; margin: 0;'>💵 TIẾT KIỆM</h4>
+                    <h1 style='color: #5dade2; margin: 10px 0;'>{savings_info['amount']}</h1>
+                    <p style='color: #2ecc71; font-weight: bold; margin: 0;'>{savings_info['percentage']}</p>
+                    <p style='color: #f39c12; font-size: 14px;'>📅 Monthly: {savings_info['monthly_projection']}</p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Conclusion box
+        st.markdown(f"""
+            <div style='background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+                        padding: 20px; border-radius: 10px; border-left: 4px solid #f39c12; margin-top: 20px;'>
+                <h4 style='color: #f39c12; margin: 0 0 10px 0;'>📋 Kết Luận</h4>
+                <p style='color: #ddd; margin: 0;'>{cost_report['conclusion']}</p>
+                <p style='color: #888; margin-top: 10px; font-size: 12px;'>
+                    📊 Data points analyzed: {cost_report['data_points_used']} | 
+                    🔄 Scaling events: {cost_report['scaling_events']}
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Show scaling events history
+        if cost_report.get('scaling_history') and len(cost_report['scaling_history']) > 0:
+            with st.expander(f"📜 View Scaling Events History ({cost_report['scaling_events']} total)"):
+                events_df = pd.DataFrame(cost_report['scaling_history'])
+                st.dataframe(events_df, use_container_width=True)
+
+st.divider()
+st.markdown("## 🧪 Legacy Cost Simulation")
 st.markdown("Compare Static deployment vs AutoScaling using **Real Data** generated by M1.")
 
 if st.button("🧪 Run Cost Simulation with REAL DATA", use_container_width=True):

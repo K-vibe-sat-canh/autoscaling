@@ -34,8 +34,8 @@ class AutoScaler:
         self.cooldown_period = datetime.timedelta(minutes=cooldown_minutes)
         self.cost_per_server_hour = cost_per_server
         
-        # State: When did we last scale? Initialize to Long Ago so we can start immediately.
-        self.last_scale_time = datetime.datetime.min
+        # State: When did we last scale? Initialize to a valid old date so we can start immediately.
+        self.last_scale_time = datetime.datetime(1970, 1, 1)
 
     def decide_scaling_action(self, current_servers, predicted_load, current_time=None):
         """

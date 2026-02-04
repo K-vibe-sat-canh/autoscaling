@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 AutoScaling Command Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🚀 AutoScaling Command Center</h1>
+            <p>Hệ thống dự báo lưu lượng và tự động điều chỉnh server - NASA Log Data</p>
+        </div>
+        <div class="status-badge" id="apiStatus">
+            <span class="status-dot"></span>
+            <span class="status-text">Checking...</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="container">
+        <!-- CONTROL PANEL -->
+        <section class="control-panel">
+            <h2>⚙️ Control Panel</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Số khoảng 15 phút dự báo:</label>
+                    <input type="range" id="forecastSteps" min="1" max="24" value="8">
+                    <span id="forecastStepsValue">8</span>
+                </div>
+                <div class="control-group">
+                    <label>Số server hiện tại:</label>
+                    <input type="number" id="currentServers" min="1" max="20" value="2">
+                </div>
+                <div class="control-group">
+                    <label>Giờ mô phỏng chi phí:</label>
+                    <select id="simHours">
+                        <option value="6">6 giờ</option>
+                        <option value="12">12 giờ</option>
+                        <option value="24" selected>24 giờ (1 ngày)</option>
+                        <option value="48">48 giờ (2 ngày)</option>
+                        <option value="168">168 giờ (1 tuần)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB NAVIGATION -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="forecast">📈 Dự Báo & Scaling</button>
+            <button class="tab-btn" data-tab="cost">💰 Phân Tích Chi Phí</button>
+            <button class="tab-btn" data-tab="metrics">📊 System Metrics</button>
+        </div>
+
+        <!-- TAB 1: FORECAST -->
+        <section id="forecast" class="tab-content active">
+            <h2>🔮 Dự Báo Lưu Lượng</h2>
+            <button class="btn-primary" onclick="runForecast()">🚀 Chạy Dự Báo</button>
+            
+            <div id="forecastResult" class="result-section hidden">
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <span class="metric-label">🤖 Model</span>
+                        <span class="metric-value" id="modelName">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">📊 RMSE</span>
+                        <span class="metric-value" id="modelRmse">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">📉 MAPE</span>
+                        <span class="metric-value" id="modelMape">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">🔮 Predictions</span>
+                        <span class="metric-value" id="predCount">-</span>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                
+                <!-- SCALING RECOMMENDATION -->
+                <h3>⚡ Khuyến Nghị Scaling</h3>
+                <div class="scaling-section">
+                    <div id="scalingCard" class="scaling-card maintain">
+                        <div class="scaling-icon">➡️</div>
+                        <div class="scaling-action">MAINTAIN</div>
+                        <div class="scaling-reason">Chưa có dữ liệu</div>
+                    </div>
+                    <div class="scaling-details">
+                        <div class="detail-item">
+                            <span>🖥️ Target Servers</span>
+                            <strong id="targetServers">-</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>💵 Chi phí/giờ</span>
+                            <strong id="costHourly">-</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>📅 Chi phí/tháng</span>
+                            <strong id="costMonthly">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: COST ANALYSIS -->
+        <section id="cost" class="tab-content hidden">
+            <h2>💰 Phân Tích Chi Phí - ĐIỂM CỘNG</h2>
+            <p class="subtitle">So sánh <strong>Static Deployment</strong> (10 servers cố định) vs <strong>AutoScaling</strong> (động)</p>
+            
+            <button class="btn-primary" onclick="runCostReport()">📊 Tạo Báo Cáo Chi Phí</button>
+            
+            <div id="costResult" class="result-section hidden">
+                <div class="cost-comparison">
+                    <div class="cost-card static">
+                        <h4>❌ Static Deployment</h4>
+                        <div class="cost-value" id="staticCost">$0.00</div>
+                        <p><span id="staticServers">10</span> servers cố định</p>
+                        <small id="staticHourly">$0.00/hour</small>
+                    </div>
+                    <div class="cost-card auto">
+                        <h4>✅ AutoScaling</h4>
+                        <div class="cost-value" id="autoCost">$0.00</div>
+                        <p>Trung bình <span id="avgServers">0</span> servers</p>
+                        <small>Tự động điều chỉnh</small>
+                    </div>
+                    <div class="cost-card savings">
+                        <h4>💵 TIẾT KIỆM</h4>
+                        <div class="cost-value" id="savingsAmount">$0.00</div>
+                        <p class="savings-percent" id="savingsPercent">0%</p>
+                        <small>📅 <span id="savingsMonthly">$0.00</span>/tháng</small>
+                    </div>
+                </div>
+                
+                <div class="conclusion-box">
+                    <h4>📋 Kết Luận cho Giám Khảo</h4>
+                    <p id="conclusionText">-</p>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span>📊 Data points analyzed:</span>
+                        <strong id="dataPoints">-</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>🔄 Total scaling events:</span>
+                        <strong id="scalingEvents">-</strong>
+                    </div>
+                </div>
+                
+                <h3>📈 Scaling Events Timeline</h3>
+                <div class="chart-container">
+                    <canvas id="scalingChart"></canvas>
+                </div>
+                
+                <details class="events-details">
+                    <summary>📋 Chi tiết scaling events</summary>
+                    <table id="eventsTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Load</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </details>
+            </div>
+        </section>
+
+        <!-- TAB 3: METRICS -->
+        <section id="metrics" class="tab-content hidden">
+            <h2>📊 System Metrics</h2>
+            <button class="btn-primary" onclick="loadMetrics()">🔄 Refresh Metrics</button>
+            
+            <div id="metricsResult" class="result-section">
+                <div class="metrics-row">
+                    <div class="metric-card large">
+                        <span class="metric-label">📈 Current Load</span>
+                        <span class="metric-value" id="currentLoad">- req/min</span>
+                    </div>
+                    <div class="metric-card large">
+                        <span class="metric-label">🖥️ Running Servers</span>
+                        <span class="metric-value" id="runningServers">-</span>
+                    </div>
+                    <div class="metric-card large">
+                        <span class="metric-label">💵 24h Cost</span>
+                        <span class="metric-value" id="cost24h">$-</span>
+                    </div>
+                </div>
+                
+                <h3>🤖 Model Performance</h3>
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <span class="metric-label">RMSE</span>
+                        <span class="metric-value" id="metricsRmse">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">MAE</span>
+                        <span class="metric-value" id="metricsMae">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">MAPE</span>
+                        <span class="metric-value" id="metricsMape">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>🚀 <strong>AutoScaling NASA Log System</strong> - AI-Powered Server Scaling</p>
+        <p>Built with FastAPI + Vanilla JS + Chart.js | Data: NASA HTTP Logs 1995</p>
+        <p><a href="http://localhost:8000/docs" target="_blank">📚 API Documentation (Swagger)</a></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

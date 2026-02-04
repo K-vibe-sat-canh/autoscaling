@@ -8,7 +8,9 @@ pandas==2.2.0
 numpy==1.26.0
 statsmodels==0.14.1
 plotly==5.18.0
-
+xgboost==2.0.3
+scikit-learn==1.4.0
+joblib==1.3.2
 
 # AI/ML Libraries (Uncomment when needed)
 # prophet==1.1.5
