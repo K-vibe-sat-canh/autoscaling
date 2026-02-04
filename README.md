@@ -3,6 +3,8 @@
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/XGBoost-2.0-orange?logo=xgboost" alt="XGBoost">
+  <img src="https://img.shields.io/badge/Frontend-HTML%2FCSS%2FJS-yellow?logo=html5" alt="Frontend">
+  <img src="https://img.shields.io/badge/Chart.js-Visualization-ff6384?logo=chartdotjs" alt="Chart.js">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
@@ -13,6 +15,44 @@
 > **Cuộc thi:** DATAFLOW 2026: THE ALCHEMY OF MINDS  
 > **Đề bài:** Phân tích và Tối ưu hóa Autoscaling hệ thống dựa trên NASA Logs  
 > **Câu lạc bộ:** HAMIC - Toán Tin  
+
+---
+
+## 🎯 QUICK START (Dành cho Giám khảo)
+
+```bash
+# 1. Cài đặt dependencies
+pip install -r requirements.txt
+
+# 2. Chạy demo (1 lệnh duy nhất)
+run_demo.bat
+```
+
+**Sau khi chạy:**
+- 🖥️ **Frontend Dashboard:** http://localhost:3000
+- 📚 **Swagger API Docs:** http://localhost:8000/docs
+- 🔍 **Test API:** http://localhost:8000/forecast?steps=4
+
+**Kết quả nổi bật:** ✅ Tiết kiệm **84.3% chi phí** ($2,730/tháng)  
+
+---
+
+## 📋 Mục lục
+
+| # | Section | Mô tả |
+|---|---------|-------|
+| 1 | [Thông tin nhóm](#-1-thông-tin-nhóm) | Danh sách thành viên |
+| 2 | [Tổng quan dự án](#-2-tổng-quan-dự-án-project-overview) | Bài toán & mục tiêu |
+| 3 | [Tính năng đã triển khai](#-3-tính-năng-đã-triển-khai-features-implemented) | ⭐ Checklist completion |
+| 4 | [Cấu trúc thư mục](#-4-cấu-trúc-thư-mục-project-structure) | File & folder layout |
+| 5 | [Hướng dẫn cài đặt](#%EF%B8%8F-5-hướng-dẫn-cài-đặt-installation) | Setup environment |
+| 6 | [Hướng dẫn chạy](#-6-hướng-dẫn-chạy-chương-trình-usage) | 🎯 **Chạy Demo** |
+| 7 | [API Endpoints](#-7-api-endpoints) | API documentation |
+| 7.5 | [Frontend Dashboard](#%EF%B8%8F-75-frontend-dashboard) | Web UI demo |
+| 8 | [Phương pháp tiếp cận](#-8-phương-pháp-tiếp-cận-methodology) | Technical approach |
+| 9 | [Kết quả đánh giá](#-9-kết-quả-đánh-giá-evaluation) | Metrics & results |
+| 10 | [Phụ lục thuật ngữ](#-10-phụ-lục-thuật-ngữ-glossary) | Terminology |
+| 11 | [Reproducibility Notes](#-11-reproducibility-notes) | Seed & environment |
 
 ---
 
@@ -51,7 +91,62 @@ Xây dựng hệ thống **AI-Powered AutoScaling** bao gồm:
 
 ---
 
-## 📁 3. Cấu trúc thư mục (Project Structure)
+## ✨ 3. Tính năng đã triển khai (Features Implemented)
+
+### 🎯 Theo yêu cầu đề bài (PHẦN 5 & 8)
+
+| Yêu cầu | Status | Mô tả |
+|---------|--------|-------|
+| **Data Pipeline** | ✅ Hoàn thành | Parse 1.8M records NASA logs, xử lý missing data |
+| **AI Model** | ✅ Hoàn thành | XGBoost + Prophet với metrics đầy đủ |
+| **API `/forecast`** | ✅ Hoàn thành | Endpoint dự báo traffic (GET) |
+| **API `/recommend-scaling`** | ✅ Hoàn thành | Endpoint khuyến nghị scaling (GET) |
+| **Frontend Dashboard** | ✅ Hoàn thành | Web UI hiển thị dự báo + biểu đồ |
+| **Swagger Documentation** | ✅ Hoàn thành | Auto-generated tại `/docs` |
+
+### 🎁 Tính năng ĐIỂM CỘNG (PHẦN 6)
+
+| Tính năng | Status | Mô tả |
+|-----------|--------|-------|
+| **Cost Report** | ✅ Hoàn thành | API `/cost-report` so sánh Static vs AutoScaling |
+| **Savings Calculator** | ✅ Hoàn thành | Tính toán tiết kiệm theo giờ/ngày/tháng |
+| **Scaling Events Log** | ✅ Hoàn thành | Lịch sử các lần scale up/down |
+| **Real-time Simulation** | ✅ Hoàn thành | Mô phỏng với dữ liệu NASA thực |
+
+### 🏗️ Kiến trúc hệ thống đã xây dựng
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        USER INTERFACE                                │
+│  ┌─────────────────────┐         ┌─────────────────────────────┐    │
+│  │   Frontend Web      │         │   Swagger UI                │    │
+│  │   (HTML/CSS/JS)     │         │   (Auto-generated)          │    │
+│  │   Port: 3000        │         │   /docs                     │    │
+│  └──────────┬──────────┘         └──────────────┬──────────────┘    │
+│             │                                   │                    │
+│             └───────────────┬───────────────────┘                    │
+│                             ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    FastAPI Backend                            │   │
+│  │                    Port: 8000                                 │   │
+│  │  ┌──────────────┬──────────────┬──────────────┬───────────┐  │   │
+│  │  │ /forecast    │ /recommend-  │ /cost-report │ /metrics  │  │   │
+│  │  │              │   scaling    │   (BONUS)    │           │  │   │
+│  │  └──────────────┴──────────────┴──────────────┴───────────┘  │   │
+│  └──────────────────────────┬───────────────────────────────────┘   │
+│                             │                                        │
+│             ┌───────────────┼───────────────┐                       │
+│             ▼               ▼               ▼                       │
+│  ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐           │
+│  │  XGBoost Model  │ │  AutoScaler │ │  Traffic Data   │           │
+│  │  (Prediction)   │ │  (Logic)    │ │  (NASA Logs)    │           │
+│  └─────────────────┘ └─────────────┘ └─────────────────┘           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 4. Cấu trúc thư mục (Project Structure)
 
 ```
 autoscaling/
@@ -108,7 +203,7 @@ autoscaling/
 
 ---
 
-## ⚙️ 4. Hướng dẫn cài đặt (Installation)
+## ⚙️ 5. Hướng dẫn cài đặt (Installation)
 
 ### Yêu cầu hệ thống
 | Yêu cầu | Phiên bản |
@@ -141,7 +236,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🚀 5. Hướng dẫn chạy chương trình (Usage)
+## 🚀 6. Hướng dẫn chạy chương trình (Usage)
 
 ### ⭐ Cách 1: Chạy Demo tự động (KHUYẾN NGHỊ)
 ```bash
@@ -177,7 +272,7 @@ Chọn kernel Python và bấm **"Run All"** (~2-3 phút)
 
 ---
 
-## 🌐 6. API Endpoints
+## 🌐 7. API Endpoints
 
 | Endpoint | Method | Mô tả | Ví dụ |
 |----------|--------|-------|-------|
@@ -211,9 +306,57 @@ Chọn kernel Python và bấm **"Run All"** (~2-3 phút)
 }
 ```
 
+### 📚 API Documentation
+Sau khi chạy Backend, truy cập:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
 ---
 
-## 🔬 7. Phương pháp tiếp cận (Methodology)
+## 🖥️ 7.5. Frontend Dashboard
+
+### Công nghệ sử dụng
+| Component | Technology |
+|-----------|------------|
+| **UI** | HTML5 + CSS3 |
+| **Logic** | Vanilla JavaScript |
+| **Charts** | Chart.js (CDN) |
+| **Theme** | Dark mode professional |
+
+### Các tab chính
+1. **📈 Forecast & Scaling** - Hiển thị dự báo và khuyến nghị scaling
+2. **💰 Cost Analysis** - So sánh chi phí Static vs AutoScaling  
+3. **📊 Metrics** - Hiển thị system metrics realtime
+
+### Screenshot Demo
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  🚀 AutoScaling Dashboard                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  [📈 Forecast]  [💰 Cost]  [📊 Metrics]                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  📈 Traffic Predictions        📊 Scaling Recommendation       │
+│  ┌─────────────────────┐      ┌─────────────────────────────┐  │
+│  │     ▄▄▄▄▄           │      │ Predicted Requests: 853     │  │
+│  │   ▄█    █▄          │      │ Recommended Servers: 1      │  │
+│  │  █       ██         │      │ Action: MAINTAIN            │  │
+│  │ █          █        │      │ Confidence: 85%             │  │
+│  └─────────────────────┘      └─────────────────────────────┘  │
+│                                                                 │
+│  💰 Cost Savings: $91.01 (84.3%)                               │
+│  📉 Monthly Projection: $2,730                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Cách truy cập
+1. Chạy `run_demo.bat` (khởi động cả Backend + Frontend)
+2. Mở browser: **http://localhost:3000**
+3. Sử dụng các tab để xem thông tin
+
+---
+
+## 🔬 8. Phương pháp tiếp cận (Methodology)
 
 ### 7.1 Xử lý dữ liệu (Data Processing)
 - **Source:** NASA HTTP Log Dataset (Jul-Aug 1995, ~1.8M records)
@@ -255,7 +398,7 @@ Chọn kernel Python và bấm **"Run All"** (~2-3 phút)
 
 ---
 
-## 📊 8. Kết quả đánh giá (Evaluation)
+## 📊 9. Kết quả đánh giá (Evaluation)
 
 ### 8.1 Model Performance (Test Set: Aug 23-31, 1995)
 
@@ -284,7 +427,7 @@ Chọn kernel Python và bấm **"Run All"** (~2-3 phút)
 
 ---
 
-## 📚 9. Phụ lục thuật ngữ (Glossary)
+## 📚 10. Phụ lục thuật ngữ (Glossary)
 
 | Thuật ngữ | Tiếng Việt | Giải thích |
 |-----------|------------|------------|
@@ -303,7 +446,7 @@ Chọn kernel Python và bấm **"Run All"** (~2-3 phút)
 
 ---
 
-## 🔄 10. Reproducibility Notes
+## 🔄 11. Reproducibility Notes
 
 ### Random Seed
 ```python
