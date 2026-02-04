@@ -205,6 +205,33 @@ autoscaling/
 
 ## ⚙️ 5. Hướng dẫn cài đặt (Installation)
 
+### ⚠️ LƯU Ý QUAN TRỌNG: Giải nén file dữ liệu
+
+> **Một số file đã được nén (.zip) do kích thước quá lớn để push lên Git (>100MB).**  
+> Vui lòng **giải nén các file sau** trước khi chạy chương trình:
+
+| File nén | Giải nén vào | Kích thước gốc |
+|----------|--------------|----------------|
+| `DATA/train.txt.zip` | `DATA/train.txt` | ~305 MB |
+| `DATA/test.txt.zip` | `DATA/test.txt` | ~54 MB |
+| `processed_data/nasa_logs_parsed.csv.zip` | `processed_data/nasa_logs_parsed.csv` | ~336 MB |
+
+**Cách giải nén nhanh (Windows):**
+```bash
+# Giải nén tất cả trong thư mục DATA
+cd DATA
+tar -xf train.txt.zip
+tar -xf test.txt.zip
+
+# Giải nén trong thư mục processed_data  
+cd ../processed_data
+tar -xf nasa_logs_parsed.csv.zip
+```
+
+**Hoặc:** Click chuột phải vào file `.zip` → **Extract Here**
+
+---
+
 ### Yêu cầu hệ thống
 | Yêu cầu | Phiên bản |
 |---------|-----------|
