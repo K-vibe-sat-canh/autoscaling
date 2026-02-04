@@ -380,7 +380,24 @@ Sau khi chạy Backend, truy cập:
 | **XGBoost** ⭐ | Hiệu quả cao với tabular data | MAPE thấp nhất (25.83%) |
 | **Prophet** | Xử lý tốt seasonality | Robust với missing data |
 
-### 7.4 Chiến lược AutoScaling
+### 7.4 Phân tích DDoS & Anomaly Detection
+
+Chúng tôi đã phân tích dữ liệu để phát hiện các cuộc tấn công DDoS tiềm năng:
+
+| Thời điểm | Loại sự kiện | Request Count | Error Rate | Kết luận |
+|-----------|--------------|---------------|------------|----------|
+| **13/07/1995 09:00** | Traffic Spike | 4,212/15min | <1% | ✅ **Hợp lệ** - STS-70 Discovery Launch |
+| **06/08/1995 02:45** | High Error | 245/15min | 26.1% | ⚠️ Anomaly nhỏ (crawler/broken links) |
+| **06/08/1995 03:00** | High Error | 177/15min | 32.8% | ⚠️ Anomaly nhỏ |
+| **07/08/1995 02:15** | High Error | 334/15min | 26.9% | ⚠️ Anomaly nhỏ |
+
+**📊 Kết luận phân tích DDoS:**
+- ❌ **KHÔNG phát hiện DDoS lớn** trong dataset
+- ✅ Traffic spike ngày 13/07/1995 là **hợp lệ** (sự kiện NASA STS-70 Space Shuttle Discovery launch)
+- ⚠️ Có **anomaly nhỏ** ngày 6-7/08/1995 lúc 2-3h sáng với error rate cao (26-32%) nhưng request volume thấp
+- 📌 Các anomaly này có thể do: web crawler, broken links, hoặc minor scanning attempt
+
+### 7.5 Chiến lược AutoScaling
 
 ```
 ┌─────────────────────────────────────────────────────────┐

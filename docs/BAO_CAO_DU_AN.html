@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Dự Án - AutoScaling Predictor</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 13pt;
+            line-height: 1.5;
+            color: #000;
+            background: #525659;
+            padding: 20px 0;
+        }
+        
+        .document {
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+        
+        /* A4 Page styling */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm 25mm 20mm 30mm;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            position: relative;
+            page-break-after: always;
+            overflow: hidden;
+        }
+        
+        .page::after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+        
+        /* Page number */
+        .page-number {
+            position: absolute;
+            bottom: 15mm;
+            right: 25mm;
+            font-size: 11pt;
+            color: #7f8c8d;
+        }
+        
+        /* Title Page */
+        .title-page {
+            text-align: center;
+            padding-top: 80mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .title-page h1 {
+            font-size: 28pt;
+            color: #1a5276;
+            margin-bottom: 15px;
+            border: none;
+        }
+        
+        .title-page .subtitle {
+            font-size: 20pt;
+            color: #2874a6;
+            margin-bottom: 40px;
+        }
+        
+        .title-page .divider {
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #1a5276, transparent);
+            margin: 30px 0;
+        }
+        
+        .title-page .competition {
+            font-size: 14pt;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .title-page .team {
+            font-size: 14pt;
+            margin: 10px 0;
+        }
+        
+        .title-page .date {
+            position: absolute;
+            bottom: 30mm;
+            font-size: 12pt;
+            color: #7f8c8d;
+        }
+        
+        /* Headers */
+        h1 {
+            font-size: 18pt;
+            color: #1a5276;
+            margin: 15px 0 12px 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #1a5276;
+            page-break-after: avoid;
+        }
+        
+        h2 {
+            font-size: 14pt;
+            color: #2874a6;
+            margin: 15px 0 10px 0;
+            page-break-after: avoid;
+        }
+        
+        h3 {
+            font-size: 13pt;
+            color: #34495e;
+            margin: 12px 0 8px 0;
+            page-break-after: avoid;
+        }
+        
+        /* Paragraphs */
+        p {
+            margin: 8px 0;
+            text-align: justify;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+        
+        th, td {
+            border: 1px solid #000;
+            padding: 6px 10px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #2874a6;
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        /* Code blocks */
+        pre, code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 9pt;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        pre {
+            padding: 10px;
+            margin: 10px 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        code {
+            padding: 2px 5px;
+        }
+        
+        /* Lists */
+        ul, ol {
+            margin: 8px 0 8px 25px;
+        }
+        
+        li {
+            margin: 4px 0;
+        }
+        
+        /* TOC */
+        .toc {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px 30px;
+            margin: 20px 0;
+        }
+        
+        .toc h2 {
+            text-align: center;
+            border: none;
+            margin-bottom: 15px;
+            color: #1a5276;
+        }
+        
+        .toc ol {
+            list-style-type: decimal;
+            font-size: 12pt;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+        }
+        
+        .toc a {
+            color: #1a5276;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Highlight boxes */
+        .highlight-box {
+            background: #e8f6f3;
+            border-left: 4px solid #1abc9c;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        
+        .warning-box {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        
+        .success-box {
+            background: #eafaf1;
+            border-left: 4px solid #27ae60;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        
+        /* Winner highlight */
+        .winner {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        /* Emoji replacement */
+        .icon {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+        }
+        
+        .check { color: #27ae60; }
+        .cross { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        .star { color: #f1c40f; }
+        .trophy { color: #f39c12; }
+        
+        /* Section separator */
+        hr {
+            display: none;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #1a5276;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .page {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                min-height: auto;
+                page-break-after: always;
+            }
+            .page-number {
+                display: none;
+            }
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+            table, pre {
+                page-break-inside: avoid;
+            }
+        }
+        
+        /* Architecture diagram */
+        .architecture {
+            font-family: 'Courier New', monospace;
+            font-size: 8pt;
+            line-height: 1.2;
+            background: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        
+        /* Architecture Table Diagram */
+        .architecture-container {
+            margin: 15px 0;
+        }
+        
+        .architecture-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 10px;
+            font-size: 10pt;
+        }
+        
+        .architecture-table td {
+            border: none;
+            padding: 0;
+        }
+        
+        .arch-header {
+            background: linear-gradient(135deg, #1a5276, #2874a6);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            font-size: 14pt;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+        
+        .arch-box {
+            background: #e8f6f3;
+            border: 2px solid #1abc9c;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            width: 45%;
+        }
+        
+        .arch-box strong {
+            color: #1a5276;
+            font-size: 11pt;
+        }
+        
+        .arch-arrow {
+            text-align: center;
+            font-size: 20pt;
+            color: #7f8c8d;
+            width: 10%;
+        }
+        
+        .arch-arrow-down {
+            text-align: center;
+            font-size: 24pt;
+            color: #2874a6;
+            padding: 5px 0;
+        }
+        
+        .arch-backend {
+            background: linear-gradient(135deg, #2874a6, #3498db);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .arch-backend strong {
+            font-size: 13pt;
+        }
+        
+        .arch-endpoints {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .arch-endpoints span {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+        }
+        
+        .arch-box-small {
+            background: #fef9e7;
+            border: 2px solid #f39c12;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            width: 30%;
+        }
+        
+        .arch-box-small strong {
+            color: #d68910;
+            font-size: 10pt;
+        }
+        
+        /* Metric highlight */
+        .metric-highlight {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #1a5276;
+        }
+        
+        .metric-value {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        /* Section title for new page */
+        .section-header {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="document">
+        <!-- Page 1: Title Page -->
+        <div class="page title-page">
+            <h1>🚀 BÁO CÁO DỰ ÁN</h1>
+            <div class="subtitle">AutoScaling Predictor - NASA Log Analysis</div>
+            <div class="divider"></div>
+            <div class="competition">
+                <strong>Cuộc thi:</strong> DATAFLOW 2026: THE ALCHEMY OF MINDS
+            </div>
+            <div class="team">
+                <strong>Đề bài:</strong> Phân tích và Tối ưu hóa Autoscaling hệ thống dựa trên NASA Logs
+            </div>
+            <div class="team">
+                <strong>Đội:</strong> Kề Vibe sát Code
+            </div>
+            <div class="date">Ngày: 04/02/2026</div>
+        </div>
+
+        <!-- Page 2: Table of Contents -->
+        <div class="page">
+            <div class="toc">
+                <h2>MỤC LỤC</h2>
+                <ol>
+                    <li><a href="#section1">Thông tin nhóm</a></li>
+                    <li><a href="#section2">Tổng quan dự án</a></li>
+                    <li><a href="#section3">Dữ liệu</a></li>
+                    <li><a href="#section4">Phương pháp tiếp cận</a></li>
+                    <li><a href="#section5">Kết quả đánh giá</a></li>
+                    <li><a href="#section6">Kiến trúc hệ thống</a></li>
+                    <li><a href="#section7">Hướng dẫn sử dụng</a></li>
+                    <li><a href="#section8">Kết luận</a></li>
+                    <li><a href="#section9">Phụ lục</a></li>
+                </ol>
+            </div>
+            <span class="page-number">2</span>
+        </div>
+
+        <!-- Page 3: Section 1 & 2 -->
+        <div class="page">
+            <h1 id="section1" class="section-header">1. THÔNG TIN NHÓM</h1>
+            <table>
+                <tr>
+                    <th>Vai trò</th>
+                    <th>Thành viên</th>
+                </tr>
+                <tr>
+                    <td><strong>Data engineering/Model</strong></td>
+                    <td>ĐỖ Văn Hải Phòng</td>
+                </tr>
+                <tr>
+                    <td><strong>Be/FE</strong></td>
+                    <td>Nguyễn Đình An</td>
+                </tr>
+            </table>
+
+            <h1 id="section2">2. TỔNG QUAN DỰ ÁN</h1>
+            
+            <h2>2.1 Bối cảnh bài toán</h2>
+            <p>Trong quản trị hệ thống đám mây (Cloud), việc cấp phát tài nguyên cố định dẫn đến hai vấn đề nghiêm trọng:</p>
+            <ul>
+                <li><strong>Lãng phí chi phí</strong> khi lưu lượng thấp (off-peak hours)</li>
+                <li><strong>Sập hệ thống</strong> khi traffic tăng đột biến (peak hours)</li>
+            </ul>
+
+            <h2>2.2 Giải pháp đề xuất</h2>
+            <p>Xây dựng hệ thống <strong>AI-Powered AutoScaling</strong> bao gồm:</p>
+            <ol>
+                <li><span class="check">✅</span> <strong>Data Pipeline</strong> - Xử lý log NASA HTTP (~1.8 triệu records)</li>
+                <li><span class="check">✅</span> <strong>AI Prediction</strong> - Dự báo tải bằng Prophet & XGBoost</li>
+                <li><span class="check">✅</span> <strong>AutoScaler Logic</strong> - Thuật toán tự động scale up/down server</li>
+                <li><span class="check">✅</span> <strong>REST API</strong> - Backend FastAPI với Swagger documentation</li>
+                <li><span class="check">✅</span> <strong>Web Dashboard</strong> - Frontend hiển thị dự báo và chi phí tiết kiệm</li>
+            </ol>
+
+            <h2>2.3 Kết quả nổi bật</h2>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Giá trị</th>
+                </tr>
+                <tr>
+                    <td><strong>Model Accuracy (MAPE)</strong></td>
+                    <td>25.83%</td>
+                </tr>
+                <tr>
+                    <td><strong>Cost Savings</strong></td>
+                    <td class="metric-value"><strong>84.3%</strong> so với Static Deployment</td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly Savings</strong></td>
+                    <td class="metric-value"><strong>~$2,730/tháng</strong></td>
+                </tr>
+            </table>
+            <span class="page-number">3</span>
+        </div>
+
+        <!-- Page 4: Section 3 (Data) -->
+        <div class="page">
+            <h1 id="section3" class="section-header">3. DỮ LIỆU</h1>
+
+            <h2>3.1 Dữ liệu</h2>
+            <ul>
+                <li><strong>Định dạng:</strong> ASCII log files</li>
+            </ul>
+
+            <h2>3.2 Thông tin dataset</h2>
+            <table>
+                <tr>
+                    <th>Thuộc tính</th>
+                    <th>Giá trị</th>
+                </tr>
+                <tr>
+                    <td><strong>Thời gian</strong></td>
+                    <td>01/07/1995 - 31/08/1995</td>
+                </tr>
+                <tr>
+                    <td><strong>Tổng thời gian</strong></td>
+                    <td>61 ngày</td>
+                </tr>
+                <tr>
+                    <td><strong>Độ phân giải</strong></td>
+                    <td>5 phút (intervals)</td>
+                </tr>
+                <tr>
+                    <td><strong>Tổng số records</strong></td>
+                    <td>17,856</td>
+                </tr>
+            </table>
+
+            <h2>3.3 Các trường dữ liệu</h2>
+            <table>
+                <tr>
+                    <th>Trường</th>
+                    <th>Mô tả</th>
+                </tr>
+                <tr>
+                    <td><code>Host</code></td>
+                    <td>IP/Domain của client</td>
+                </tr>
+                <tr>
+                    <td><code>Timestamp</code></td>
+                    <td>Thời gian request</td>
+                </tr>
+                <tr>
+                    <td><code>Request</code></td>
+                    <td>Method, URL, Protocol</td>
+                </tr>
+                <tr>
+                    <td><code>HTTP Reply Code</code></td>
+                    <td>Status code (200, 404, 500...)</td>
+                </tr>
+                <tr>
+                    <td><code>Bytes</code></td>
+                    <td>Kích thước response</td>
+                </tr>
+            </table>
+
+            <h2>3.4 Xử lý Missing Data (Data Gap)</h2>
+            <div class="warning-box">
+                <strong>Vấn đề:</strong> Từ <strong>14:52:01 01/08/1995</strong> đến <strong>04:36:13 03/08/1995</strong> không có dữ liệu do server tắt vì bão.
+            </div>
+            <table>
+                <tr>
+                    <th>Thuộc tính</th>
+                    <th>Giá trị</th>
+                </tr>
+                <tr>
+                    <td><strong>Thời gian outage</strong></td>
+                    <td>~37.7 giờ</td>
+                </tr>
+                <tr>
+                    <td><strong>Records bị ảnh hưởng</strong></td>
+                    <td>453 (2.54%)</td>
+                </tr>
+                <tr>
+                    <td><strong>Phương pháp xử lý</strong></td>
+                    <td>Linear Interpolation</td>
+                </tr>
+            </table>
+            <span class="page-number">4</span>
+        </div>
+
+        <!-- Page 5: Section 3 (continued) -->
+        <div class="page">
+            <h2 class="section-header">3.5 Phân chia Train/Test</h2>
+            <table>
+                <tr>
+                    <th>Tập dữ liệu</th>
+                    <th>Thời gian</th>
+                    <th>Records</th>
+                    <th>Tỷ lệ</th>
+                </tr>
+                <tr>
+                    <td><strong>Train Set</strong></td>
+                    <td>01/07 - 22/08/1995</td>
+                    <td>15,264</td>
+                    <td>85.5%</td>
+                </tr>
+                <tr>
+                    <td><strong>Test Set</strong></td>
+                    <td>23/08 - 31/08/1995</td>
+                    <td>2,592</td>
+                    <td>14.5%</td>
+                </tr>
+            </table>
+
+            <h2>3.6 Thống kê Traffic (Không tính outage)</h2>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Giá trị</th>
+                </tr>
+                <tr>
+                    <td>Mean Request Count</td>
+                    <td>198.91 / 5 phút</td>
+                </tr>
+                <tr>
+                    <td>Std Dev</td>
+                    <td>138.40</td>
+                </tr>
+                <tr>
+                    <td>Max Request Count</td>
+                    <td>1,501 / 5 phút</td>
+                </tr>
+                <tr>
+                    <td>Mean Bytes</td>
+                    <td>3.77 MB / 5 phút</td>
+                </tr>
+            </table>
+
+            <h2>3.7 Phân bố Status Codes</h2>
+            <table>
+                <tr>
+                    <th>Status Code</th>
+                    <th>Tỷ lệ</th>
+                </tr>
+                <tr>
+                    <td>2xx (Success)</td>
+                    <td>89.6%</td>
+                </tr>
+                <tr>
+                    <td>3xx (Redirect)</td>
+                    <td>9.8%</td>
+                </tr>
+                <tr>
+                    <td>4xx (Client Error)</td>
+                    <td>0.6%</td>
+                </tr>
+                <tr>
+                    <td>5xx (Server Error)</td>
+                    <td>0.0%</td>
+                </tr>
+            </table>
+            <span class="page-number">5</span>
+        </div>
+
+        <!-- Page 6: Section 4 (Methodology) -->
+        <div class="page">
+            <h1 id="section4" class="section-header">4. PHƯƠNG PHÁP TIẾP CẬN</h1>
+
+            <h2>4.1 Pipeline xử lý dữ liệu</h2>
+            <pre>Raw Logs → Parse (Regex) → Resample → Mark Outage → Feature Engineering → Model</pre>
+            
+            <p><strong>Chi tiết các bước:</strong></p>
+            <ol>
+                <li><strong>Parsing:</strong> Regex pattern extraction (host, timestamp, method, status, bytes)</li>
+                <li><strong>Resampling:</strong> Aggregation về khung 1 phút, 5 phút, 15 phút</li>
+                <li><strong>Missing Data:</strong> Đánh dấu outage period và xử lý bằng Linear Interpolation</li>
+            </ol>
+
+            <h2>4.2 Feature Engineering</h2>
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Mô tả</th>
+                    <th>Loại</th>
+                </tr>
+                <tr>
+                    <td><code>hour</code></td>
+                    <td>Giờ trong ngày (0-23)</td>
+                    <td>Time-based</td>
+                </tr>
+                <tr>
+                    <td><code>day_of_week</code></td>
+                    <td>Ngày trong tuần (0-6)</td>
+                    <td>Time-based</td>
+                </tr>
+                <tr>
+                    <td><code>is_weekend</code></td>
+                    <td>Cuối tuần hay không</td>
+                    <td>Binary</td>
+                </tr>
+                <tr>
+                    <td><code>request_lag_1</code></td>
+                    <td>Request 5 phút trước</td>
+                    <td>Lag feature</td>
+                </tr>
+                <tr>
+                    <td><code>request_lag_12</code></td>
+                    <td>Request 1 giờ trước</td>
+                    <td>Lag feature</td>
+                </tr>
+                <tr>
+                    <td><code>request_lag_288</code></td>
+                    <td>Request 1 ngày trước</td>
+                    <td>Lag feature</td>
+                </tr>
+                <tr>
+                    <td><code>request_rolling_mean_1h</code></td>
+                    <td>Trung bình trượt 1 giờ</td>
+                    <td>Rolling</td>
+                </tr>
+                <tr>
+                    <td><code>hour_sin</code>, <code>hour_cos</code></td>
+                    <td>Encoding theo chu kỳ</td>
+                    <td>Cyclical</td>
+                </tr>
+            </table>
+            <span class="page-number">6</span>
+        </div>
+
+        <!-- Page 7: Section 4 (continued) -->
+        <div class="page">
+            <h2 class="section-header">4.3 Mô hình AI</h2>
+
+            <h3>Lựa chọn mô hình</h3>
+            <table>
+                <tr>
+                    <th>Model</th>
+                    <th>Lý do chọn</th>
+                    <th>Ưu điểm</th>
+                </tr>
+                <tr>
+                    <td><strong>XGBoost</strong> ⭐</td>
+                    <td>Hiệu quả cao với tabular data</td>
+                    <td>MAPE thấp nhất (25.83%)</td>
+                </tr>
+                <tr>
+                    <td><strong>Prophet</strong></td>
+                    <td>Xử lý tốt seasonality</td>
+                    <td>Robust với missing data</td>
+                </tr>
+            </table>
+
+            <h3>Nhiệm vụ dự báo</h3>
+            <ol>
+                <li><strong>Requests per second (hits)</strong> - Số lượng request</li>
+                <li><strong>Traffic volume (bytes)</strong> - Lưu lượng dữ liệu</li>
+            </ol>
+
+            <h3>Metrics đánh giá</h3>
+            <ul>
+                <li><strong>RMSE</strong> (Root Mean Square Error)</li>
+                <li><strong>MAE</strong> (Mean Absolute Error)</li>
+                <li><strong>MAPE</strong> (Mean Absolute Percentage Error)</li>
+            </ul>
+
+            <h2>4.4 Chiến lược AutoScaling</h2>
+            <p><strong>Logic quyết định:</strong></p>
+            <pre>IF utilization > 85%  →  SCALE UP (thêm server)
+IF utilization &lt; 30%  →  SCALE DOWN (bớt server)
+ELSE                  →  MAINTAIN (giữ nguyên)</pre>
+
+            <p><strong>Tham số cấu hình:</strong></p>
+            <table>
+                <tr>
+                    <th>Tham số</th>
+                    <th>Giá trị</th>
+                    <th>Mô tả</th>
+                </tr>
+                <tr>
+                    <td>Cooldown</td>
+                    <td>5 phút</td>
+                    <td>Tránh flapping</td>
+                </tr>
+                <tr>
+                    <td>Capacity/server</td>
+                    <td>1000 requests/interval</td>
+                    <td>Sức chứa mỗi server</td>
+                </tr>
+                <tr>
+                    <td>Cost/server</td>
+                    <td>$0.45/hour</td>
+                    <td>Chi phí AWS t3.medium</td>
+                </tr>
+            </table>
+            <span class="page-number">7</span>
+        </div>
+
+        <!-- Page 8: Section 4 (Anomaly Detection) -->
+        <div class="page">
+            <h2 class="section-header">4.5 Phân tích Anomaly & DDoS Detection</h2>
+            <table>
+                <tr>
+                    <th>Thời điểm</th>
+                    <th>Loại sự kiện</th>
+                    <th>Request Count</th>
+                    <th>Error Rate</th>
+                    <th>Kết luận</th>
+                </tr>
+                <tr>
+                    <td>13/07/1995 09:00</td>
+                    <td>Traffic Spike</td>
+                    <td>4,212/15min</td>
+                    <td>&lt;1%</td>
+                    <td><span class="check">✅</span> Hợp lệ - STS-70</td>
+                </tr>
+                <tr>
+                    <td>06/08/1995 02:45</td>
+                    <td>High Error</td>
+                    <td>245/15min</td>
+                    <td>26.1%</td>
+                    <td><span class="warning">⚠️</span> Anomaly nhỏ</td>
+                </tr>
+                <tr>
+                    <td>06/08/1995 03:00</td>
+                    <td>High Error</td>
+                    <td>177/15min</td>
+                    <td>32.8%</td>
+                    <td><span class="warning">⚠️</span> Anomaly nhỏ</td>
+                </tr>
+                <tr>
+                    <td>07/08/1995 02:15</td>
+                    <td>High Error</td>
+                    <td>334/15min</td>
+                    <td>26.9%</td>
+                    <td><span class="warning">⚠️</span> Anomaly nhỏ</td>
+                </tr>
+            </table>
+
+            <div class="highlight-box">
+                <strong>Kết luận:</strong>
+                <ul>
+                    <li><span class="cross">❌</span> KHÔNG phát hiện DDoS lớn trong dataset</li>
+                    <li><span class="check">✅</span> Traffic spike ngày 13/07/1995 là hợp lệ (sự kiện NASA STS-70)</li>
+                    <li><span class="warning">⚠️</span> Có anomaly nhỏ ngày 6-7/08/1995 lúc 2-3h sáng</li>
+                </ul>
+            </div>
+            <span class="page-number">8</span>
+        </div>
+
+        <!-- Page 9: Section 5 (Results) -->
+        <div class="page">
+            <h1 id="section5" class="section-header">5. KẾT QUẢ ĐÁNH GIÁ</h1>
+
+            <h2>5.1 Model Performance (Test Set: Aug 23-31, 1995)</h2>
+
+            <h3>Dự báo Requests</h3>
+            <table>
+                <tr>
+                    <th>Model</th>
+                    <th>RMSE</th>
+                    <th>MAE</th>
+                    <th>MAPE</th>
+                </tr>
+                <tr style="background-color: #d5f5e3;">
+                    <td><strong>XGBoost</strong> ⭐</td>
+                    <td><strong>43.13</strong></td>
+                    <td><strong>32.36</strong></td>
+                    <td><strong>25.83%</strong></td>
+                </tr>
+                <tr>
+                    <td>Prophet</td>
+                    <td>86.63</td>
+                    <td>63.80</td>
+                    <td>45.05%</td>
+                </tr>
+            </table>
+
+            <h3>Dự báo Bytes</h3>
+            <table>
+                <tr>
+                    <th>Model</th>
+                    <th>RMSE</th>
+                    <th>MAE</th>
+                    <th>MAPE</th>
+                </tr>
+                <tr style="background-color: #d5f5e3;">
+                    <td><strong>XGBoost</strong> ⭐</td>
+                    <td><strong>1.17M</strong></td>
+                    <td><strong>894K</strong></td>
+                    <td><strong>39.15%</strong></td>
+                </tr>
+                <tr>
+                    <td>Prophet</td>
+                    <td>1.68M</td>
+                    <td>1.24M</td>
+                    <td>53.95%</td>
+                </tr>
+            </table>
+
+            <div class="success-box">
+                <strong>🏆 Winner: XGBoost</strong> - MAPE thấp hơn ~50% so với Prophet
+            </div>
+
+            <h2>5.2 Cost Savings Analysis (24 giờ simulation)</h2>
+            <table>
+                <tr>
+                    <th>Phương án</th>
+                    <th>Chi phí</th>
+                    <th>Servers</th>
+                    <th>So sánh</th>
+                </tr>
+                <tr>
+                    <td>Static Deployment</td>
+                    <td>$108.00</td>
+                    <td>10 cố định</td>
+                    <td>Baseline</td>
+                </tr>
+                <tr style="background-color: #d5f5e3;">
+                    <td><strong>AutoScaling</strong></td>
+                    <td><strong>$16.99</strong></td>
+                    <td>Avg 1.6</td>
+                    <td>-84.3%</td>
+                </tr>
+                <tr style="background-color: #abebc6;">
+                    <td><strong>Tiết kiệm</strong></td>
+                    <td><strong>$91.01</strong></td>
+                    <td>-</td>
+                    <td><strong>84.3%</strong></td>
+                </tr>
+            </table>
+
+            <h2>5.3 Projected Savings</h2>
+            <table>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Tiết kiệm</th>
+                </tr>
+                <tr>
+                    <td><strong>Mỗi ngày</strong></td>
+                    <td>$91.01</td>
+                </tr>
+                <tr>
+                    <td><strong>Mỗi tháng</strong></td>
+                    <td>$2,730.38</td>
+                </tr>
+                <tr>
+                    <td><strong>Mỗi năm</strong></td>
+                    <td>$32,764.56</td>
+                </tr>
+            </table>
+            <span class="page-number">9</span>
+        </div>
+
+        <!-- Page 10: Section 6 (Architecture) -->
+        <div class="page">
+            <h1 id="section6" class="section-header">6. KIẾN TRÚC HỆ THỐNG</h1>
+
+            <h2>6.1 Sơ đồ tổng quan</h2>
+            <div class="architecture-container">
+                <table class="architecture-table">
+                    <tr>
+                        <td colspan="3" class="arch-header">USER INTERFACE</td>
+                    </tr>
+                    <tr>
+                        <td class="arch-box">
+                            <strong>Frontend Web</strong><br>
+                            (HTML/CSS/JS)<br>
+                            Port: 3000
+                        </td>
+                        <td class="arch-arrow">↔</td>
+                        <td class="arch-box">
+                            <strong>Swagger UI</strong><br>
+                            (Auto-generated)<br>
+                            /docs
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="arch-arrow-down">↓</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="arch-backend">
+                            <strong>FastAPI Backend</strong> - Port: 8000<br>
+                            <div class="arch-endpoints">
+                                <span>/forecast</span>
+                                <span>/recommend-scaling</span>
+                                <span>/cost-report</span>
+                                <span>/metrics</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="arch-arrow-down">↓</td>
+                    </tr>
+                    <tr>
+                        <td class="arch-box-small">
+                            <strong>XGBoost Model</strong><br>
+                            (Prediction)
+                        </td>
+                        <td class="arch-box-small">
+                            <strong>AutoScaler</strong><br>
+                            (Logic)
+                        </td>
+                        <td class="arch-box-small">
+                            <strong>Traffic Data</strong><br>
+                            (NASA Logs)
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <span class="page-number">10</span>
+        </div>
+
+        <!-- Page 11: Section 6 (Directory Structure) -->
+        <div class="page">
+            <h2 class="section-header">6.2 Cấu trúc thư mục</h2>
+            <pre>autoscaling/
+│
+├── app.py                    # FastAPI Backend (API chính)
+├── serve_frontend.py         # Server cho Frontend web
+├── requirements.txt          # Dependencies
+├── run_demo.bat              # Script chạy demo
+│
+├── frontend/                 # FRONTEND WEB
+│   ├── index.html            # Trang chính
+│   ├── style.css             # Styling
+│   └── app.js                # JavaScript logic
+│
+├── DATA/                     # Raw data (NASA logs)
+│   ├── train.txt             # Training data
+│   └── test.txt              # Test data
+│
+├── processed_data/           # Dữ liệu đã xử lý
+│   ├── nasa_traffic_1m.csv      
+│   ├── nasa_traffic_5m.csv   # File chính cho modeling
+│   └── nasa_traffic_15m.csv  
+│
+├── notebooks/                # Jupyter Notebooks
+│   └── modeling_phase3.ipynb # Notebook training
+│
+├── src/                      # Source code
+│   ├── data_pipeline.py      # Data processing pipeline
+│   ├── eda.py                # Exploratory Data Analysis
+│   ├── model_trainer.py      # Model training
+│   └── handle_missing_data.py
+│
+├── models/                   
+│   └── predictor.py          # Prediction interfaces
+│
+├── backend/                  
+│   └── autoscaler.py         # AutoScaler Algorithm
+│
+├── saved_models/             # Trained models
+│   ├── xgb_requests.json     
+│   ├── xgb_bytes.json        
+│   └── metrics_summary.json  
+│
+└── docs/                     # Documentation</pre>
+            <span class="page-number">11</span>
+        </div>
+
+        <!-- Page 12: Section 6 (API & Technology) -->
+        <div class="page">
+            <h2 class="section-header">6.3 API Endpoints</h2>
+            <table>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Method</th>
+                    <th>Mô tả</th>
+                </tr>
+                <tr>
+                    <td><code>/forecast</code></td>
+                    <td>GET</td>
+                    <td>Dự báo traffic</td>
+                </tr>
+                <tr>
+                    <td><code>/recommend-scaling</code></td>
+                    <td>GET</td>
+                    <td>Khuyến nghị scaling</td>
+                </tr>
+                <tr>
+                    <td><code>/cost-report</code></td>
+                    <td>GET</td>
+                    <td>Báo cáo chi phí</td>
+                </tr>
+                <tr>
+                    <td><code>/metrics</code></td>
+                    <td>GET</td>
+                    <td>System metrics</td>
+                </tr>
+                <tr>
+                    <td><code>/health</code></td>
+                    <td>GET</td>
+                    <td>Health check</td>
+                </tr>
+            </table>
+
+            <h2>6.4 Công nghệ sử dụng</h2>
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Technology</th>
+                </tr>
+                <tr>
+                    <td><strong>Backend</strong></td>
+                    <td>FastAPI, Python 3.10+</td>
+                </tr>
+                <tr>
+                    <td><strong>ML Models</strong></td>
+                    <td>XGBoost, Prophet</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend</strong></td>
+                    <td>HTML5, CSS3, JavaScript</td>
+                </tr>
+                <tr>
+                    <td><strong>Charts</strong></td>
+                    <td>Chart.js</td>
+                </tr>
+                <tr>
+                    <td><strong>Data Processing</strong></td>
+                    <td>Pandas, NumPy</td>
+                </tr>
+            </table>
+            <span class="page-number">12</span>
+        </div>
+
+        <!-- Page 13: Section 7 (User Guide) -->
+        <div class="page">
+            <h1 id="section7" class="section-header">7. HƯỚNG DẪN SỬ DỤNG</h1>
+
+            <h2>7.1 Yêu cầu hệ thống</h2>
+            <table>
+                <tr>
+                    <th>Yêu cầu</th>
+                    <th>Phiên bản</th>
+                </tr>
+                <tr>
+                    <td>Python</td>
+                    <td>3.10+</td>
+                </tr>
+                <tr>
+                    <td>RAM</td>
+                    <td>4GB+ (khuyến nghị 8GB)</td>
+                </tr>
+                <tr>
+                    <td>OS</td>
+                    <td>Windows / Linux / MacOS</td>
+                </tr>
+            </table>
+
+            <h2>7.2 Cài đặt</h2>
+            <pre># 1. Clone repository
+git clone https://github.com/[your-repo]/autoscaling.git
+cd autoscaling
+
+# 2. Tạo Virtual Environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+
+# 3. Cài đặt thư viện
+pip install -r requirements.txt</pre>
+
+            <h2>7.3 Chạy Demo</h2>
+            <p><strong>Cách 1: Tự động (Khuyến nghị)</strong></p>
+            <pre>run_demo.bat</pre>
+
+            <p><strong>Cách 2: Thủ công</strong></p>
+            <pre># Terminal 1: Backend
+uvicorn app:app --reload --port 8000
+
+# Terminal 2: Frontend
+python serve_frontend.py</pre>
+
+            <h2>7.4 Truy cập</h2>
+            <table>
+                <tr>
+                    <th>Service</th>
+                    <th>URL</th>
+                </tr>
+                <tr>
+                    <td>Frontend Dashboard</td>
+                    <td><a href="http://localhost:3000">http://localhost:3000</a></td>
+                </tr>
+                <tr>
+                    <td>Swagger API Docs</td>
+                    <td><a href="http://localhost:8000/docs">http://localhost:8000/docs</a></td>
+                </tr>
+                <tr>
+                    <td>Test API</td>
+                    <td><a href="http://localhost:8000/forecast?steps=4">http://localhost:8000/forecast?steps=4</a></td>
+                </tr>
+            </table>
+            <span class="page-number">13</span>
+        </div>
+
+        <!-- Page 14: Section 8 (Conclusion) -->
+        <div class="page">
+            <h1 id="section8" class="section-header">8. KẾT LUẬN</h1>
+
+            <h2>8.1 Thành tựu đạt được</h2>
+            <div class="success-box">
+                <p><strong><span class="check">✅</span> Hoàn thành 100% yêu cầu đề bài:</strong></p>
+                <ul>
+                    <li>Data Pipeline xử lý 1.8M records</li>
+                    <li>AI Model với MAPE 25.83%</li>
+                    <li>API endpoints đầy đủ</li>
+                    <li>Frontend Dashboard hoàn chỉnh</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <p><strong><span class="check">✅</span> Tính năng điểm cộng:</strong></p>
+                <ul>
+                    <li>Cost Report API</li>
+                    <li>Savings Calculator</li>
+                    <li>Scaling Events Log</li>
+                    <li>Real-time Simulation</li>
+                </ul>
+            </div>
+
+            <h2>8.2 Kết quả kinh doanh</h2>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Giá trị</th>
+                </tr>
+                <tr>
+                    <td>Chi phí tiết kiệm</td>
+                    <td class="metric-value"><strong>84.3%</strong></td>
+                </tr>
+                <tr>
+                    <td>Tiết kiệm hàng tháng</td>
+                    <td class="metric-value"><strong>$2,730</strong></td>
+                </tr>
+                <tr>
+                    <td>Tiết kiệm hàng năm</td>
+                    <td class="metric-value"><strong>$32,764</strong></td>
+                </tr>
+            </table>
+
+            <h2>8.3 Hạn chế và hướng phát triển</h2>
+            <p><strong>Hạn chế:</strong></p>
+            <ul>
+                <li>Dataset từ năm 1995, patterns có thể khác với traffic hiện đại</li>
+                <li>Chưa có LSTM/Deep Learning models</li>
+            </ul>
+
+            <p><strong>Hướng phát triển:</strong></p>
+            <ul>
+                <li>Tích hợp real-time streaming data</li>
+                <li>Thêm anomaly detection nâng cao</li>
+                <li>Deploy trên Kubernetes với HPA</li>
+            </ul>
+            <span class="page-number">14</span>
+        </div>
+
+        <!-- Page 15: Section 9 (Appendix) -->
+        <div class="page">
+            <h1 id="section9" class="section-header">9. PHỤ LỤC</h1>
+
+            <h2>9.1 Thuật ngữ</h2>
+            <table>
+                <tr>
+                    <th>Thuật ngữ</th>
+                    <th>Tiếng Việt</th>
+                    <th>Giải thích</th>
+                </tr>
+                <tr>
+                    <td>AutoScaling</td>
+                    <td>Tự động co giãn</td>
+                    <td>Tự động điều chỉnh số lượng server theo tải</td>
+                </tr>
+                <tr>
+                    <td>Flapping</td>
+                    <td>Dao động liên tục</td>
+                    <td>Hiện tượng scale up/down liên tục</td>
+                </tr>
+                <tr>
+                    <td>Cooldown</td>
+                    <td>Thời gian chờ</td>
+                    <td>Khoảng nghỉ giữa các lần scaling</td>
+                </tr>
+                <tr>
+                    <td>Utilization</td>
+                    <td>Tỷ lệ sử dụng</td>
+                    <td>% tài nguyên đang được sử dụng</td>
+                </tr>
+                <tr>
+                    <td>Threshold</td>
+                    <td>Ngưỡng</td>
+                    <td>Giá trị kích hoạt hành động scaling</td>
+                </tr>
+                <tr>
+                    <td>EDA</td>
+                    <td>Phân tích khám phá</td>
+                    <td>Exploratory Data Analysis</td>
+                </tr>
+                <tr>
+                    <td>RMSE</td>
+                    <td>Sai số bình phương</td>
+                    <td>Root Mean Square Error</td>
+                </tr>
+                <tr>
+                    <td>MAE</td>
+                    <td>Sai số tuyệt đối</td>
+                    <td>Mean Absolute Error</td>
+                </tr>
+                <tr>
+                    <td>MAPE</td>
+                    <td>Sai số phần trăm</td>
+                    <td>Mean Absolute Percentage Error</td>
+                </tr>
+            </table>
+            <span class="page-number">15</span>
+        </div>
+
+        <!-- Page 16: Section 9 (continued) -->
+        <div class="page">
+            <h2 class="section-header">9.2 Reproducibility</h2>
+            <p><strong>Random Seed:</strong></p>
+            <pre>SEED = 42
+np.random.seed(SEED)
+random.seed(SEED)</pre>
+
+            <p><strong>Tested Environment:</strong></p>
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Version</th>
+                </tr>
+                <tr>
+                    <td>OS</td>
+                    <td>Windows 11</td>
+                </tr>
+                <tr>
+                    <td>Python</td>
+                    <td>3.10.11</td>
+                </tr>
+                <tr>
+                    <td>FastAPI</td>
+                    <td>0.109.0</td>
+                </tr>
+                <tr>
+                    <td>XGBoost</td>
+                    <td>2.0.3</td>
+                </tr>
+                <tr>
+                    <td>Pandas</td>
+                    <td>2.2.0</td>
+                </tr>
+            </table>
+
+            <h2>9.3 Tài liệu tham khảo</h2>
+            <ol>
+                <li>NASA HTTP Log Dataset - <a href="https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html">https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html</a></li>
+                <li>XGBoost Documentation - <a href="https://xgboost.readthedocs.io/">https://xgboost.readthedocs.io/</a></li>
+                <li>Prophet Documentation - <a href="https://facebook.github.io/prophet/">https://facebook.github.io/prophet/</a></li>
+                <li>FastAPI Documentation - <a href="https://fastapi.tiangolo.com/">https://fastapi.tiangolo.com/</a></li>
+            </ol>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p><strong>🚀 AutoScaling Predictor - DataFlow 2026</strong></p>
+                <p><em>AI-Powered Server Scaling for Cost Optimization</em></p>
+                <hr style="display: block; width: 30%; margin: 20px auto; border-top: 1px solid #bdc3c7;">
+                <p>Báo cáo được tạo ngày: 04/02/2026</p>
+            </div>
+            <span class="page-number">16</span>
+        </div>
+    </div>
+</body>
+</html>

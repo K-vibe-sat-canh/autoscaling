@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thuyết trình AutoScaling Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Bảng màu */
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --primary: #3b82f6; /* Xanh dương */
+            --secondary: #64748b; /* Xám đá */
+            --accent: #f59e0b; /* Hổ phách */
+            --success: #10b981; /* Ngọc lục bảo */
+            --danger: #ef4444; /* Đỏ */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            /* Kích thước Slide cho PDF Letter Landscape (11 x 8.5 inches) */
+            --slide-width: 279.4mm;
+            --slide-height: 215.9mm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #333; /* Nền cho chế độ xem trình duyệt */
+            color: var(--text-main);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* --- SLIDE CONTAINER --- */
+        .slide {
+            width: var(--slide-width);
+            height: var(--slide-height);
+            background-color: var(--bg-dark);
+            position: relative;
+            overflow: hidden;
+            page-break-after: always; /* Ngắt trang khi in PDF */
+            padding: 15mm; /* Vùng an toàn */
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto 20px auto; /* Margin xem trên màn hình */
+            border: 1px solid #444; /* Viền xem trên màn hình */
+        }
+
+        @media print {
+            body { background: none; }
+            .slide {
+                margin: 0;
+                border: none;
+                page-break-after: always;
+            }
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 2.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 2rem; border-left: 8px solid var(--primary); padding-left: 1rem; }
+        h3 { font-size: 1.5rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; margin-top: 1rem; }
+        h4 { font-size: 1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        p, li { font-size: 1.1rem; line-height: 1.6; color: #cbd5e1; }
+        code { font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #e2e8f0; font-size: 0.9em; }
+
+        /* --- LAYOUT UTILS --- */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 100%; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .flex-center { display: flex; align-items: center; justify-content: center; }
+        .h-full { height: 100%; }
+        
+        /* --- COMPONENTS --- */
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.highlight { border: 1px solid var(--primary); background: rgba(59, 130, 246, 0.1); }
+        .card.danger { border-left: 4px solid var(--danger); }
+        .card.success { border-left: 4px solid var(--success); }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .tag-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+        th { text-align: left; border-bottom: 2px solid var(--secondary); padding: 10px; color: var(--text-muted); }
+        td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        tr:last-child td { border-bottom: none; }
+
+        /* Terminal Style */
+        .terminal {
+            background: #000;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #4ade80;
+            border: 1px solid #333;
+        }
+
+        /* Footer */
+        .slide-footer {
+            position: absolute;
+            bottom: 10mm;
+            left: 15mm;
+            right: 15mm;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* --- SPECIFIC SLIDE STYLES --- */
+        .flow-container { display: flex; justify-content: space-between; align-items: center; margin: 30px 0; }
+        .flow-step { flex: 1; background: var(--bg-card); padding: 20px; border-radius: 8px; position: relative; border-top: 4px solid var(--secondary); }
+        .flow-arrow { font-size: 2rem; color: var(--text-muted); padding: 0 10px; }
+        
+        .big-stat { font-size: 5rem; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 1.2rem; color: var(--text-muted); }
+
+        /* Winner highlight */
+        .winner { color: var(--success); font-weight: bold; }
+        
+        /* EDA Images */
+        .eda-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .eda-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .eda-item {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .eda-item img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        
+        .eda-item p {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            color: var(--text-muted);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: TITLE -->
+    <div class="slide flex-center" style="text-align: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);">
+        <div>
+            <div style="font-size: 1.2rem; color: var(--accent); letter-spacing: 4px; font-weight: 700; margin-bottom: 20px;">DATAFLOW 2026: THE ALCHEMY OF MINDS</div>
+            <h1 style="font-size: 4.5rem; margin-bottom: 1rem;">AutoScaling Predictor</h1>
+            <p style="font-size: 1.8rem; color: var(--text-muted);">Tối ưu chi phí Cloud Infrastructure bằng AI</p>
+            
+            <div style="margin-top: 60px; padding: 30px 50px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; display: inline-block; backdrop-filter: blur(10px); background: rgba(255,255,255,0.02);">
+                <p style="font-weight: 600; font-size: 1.4rem; color: var(--primary);">Team: Kề Vibe sát Code</p>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Giới thiệu</span>
+            <span>Slide 1</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: PROBLEM -->
+    <div class="slide">
+        <h2>Vấn đề (Problem Statement)</h2>
+        <div class="grid-2">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="card danger" style="padding: 18px;">
+                    <h3 style="color: var(--danger); margin-top:0; font-size: 1.3rem;">🔴 Dư thừa tài nguyên (Over-provisioning)</h3>
+                    <p style="font-size: 0.95rem;">Server chạy không tải khi traffic thấp.</p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.85rem;">
+                        <strong>📊 Từ Dữ liệu NASA:</strong><br>
+                        • Giờ thấp điểm (đêm): chỉ <span style="color: #f87171;">375 req/15phút</span><br>
+                        • Cuối tuần giảm <span style="color: #f87171;">47%</span> so với ngày thường<br>
+                        • <span style="color: #f87171;">95.1%</span> thời gian utilization &lt;30%
+                    </div>
+                </div>
+                <div class="card danger" style="padding: 18px;">
+                    <h3 style="color: var(--danger); margin-top:0; font-size: 1.3rem;">🔴 Thiếu hụt tài nguyên (Under-provisioning)</h3>
+                    <p style="font-size: 0.95rem;">Traffic tăng đột ngột, server không kịp scale.</p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.85rem;">
+                        <strong>📊 Từ Dữ liệu NASA:</strong><br>
+                        • Đỉnh điểm cao nhất: <span style="color: #f87171;">4,212 req/15phút</span> (7.1x trung bình)<br>
+                        • Tăng <span style="color: #f87171;">+2,290 req</span> chỉ trong 1 giờ<br>
+                        • <span style="color: #f87171;">46 lần</span> spike vượt 3σ (bất thường)
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="card" style="text-align: center; background: rgba(239,68,68,0.1); border: 1px solid var(--danger); padding: 20px;">
+                    <div class="big-stat" style="color: var(--danger); font-size: 4rem;">88.4%</div>
+                    <p class="stat-label" style="font-size: 1rem;">Tài nguyên bị LÃNG PHÍ<br><small style="color: var(--text-muted);">(nếu deploy cố định 5 servers)</small></p>
+                </div>
+                <div class="card highlight" style="padding: 15px;">
+                    <h3 style="margin-top: 0; font-size: 1.1rem;">📈 Biến động Traffic thực tế</h3>
+                    <table style="font-size: 0.85rem; margin-top: 8px;">
+                        <tr><td>Cao điểm (9h-16h):</td><td><strong>879</strong> req/15phút</td></tr>
+                        <tr><td>Thấp điểm (đêm):</td><td><strong>375</strong> req/15phút</td></tr>
+                        <tr><td>Tỷ lệ:</td><td><strong style="color: var(--accent);">2.3x</strong> chênh lệch</td></tr>
+                        <tr><td>Spike lớn nhất:</td><td><strong style="color: var(--danger);">4,212</strong> req (7.1x trung bình)</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Vấn đề & Dữ liệu chứng minh</span>
+            <span>Slide 2</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: SOLUTION -->
+    <div class="slide">
+        <h2>Giải pháp tổng quan</h2>
+        
+        <div class="flow-container">
+            <div class="flow-step" style="border-color: var(--secondary);">
+                <h4>1. Data Pipeline</h4>
+                <ul style="margin-top: 10px; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Log Parsing (Regex)</li>
+                    <li>Làm sạch dữ liệu (Cleaning)</li>
+                    <li>Lấy mẫu lại (Resampling)</li>
+                </ul>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step" style="border-color: var(--primary);">
+                <h4>2. Forecasting</h4>
+                <ul style="margin-top: 10px; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Mô hình XGBoost</li>
+                    <li>Mô hình Prophet</li>
+                    <li>Dự đoán Traffic</li>
+                </ul>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step" style="border-color: var(--success);">
+                <h4>3. Auto Scaler</h4>
+                <ul style="margin-top: 10px; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Ra quyết định Scale</li>
+                    <li>Cơ chế Cooldown</li>
+                    <li>Thực thi hành động</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card highlight" style="margin-top: auto;">
+            <div class="grid-2">
+                <div>
+                    <h3>📈 Dự báo (Forecasting)</h3>
+                    <p>Dự đoán số lượng Request và Bandwidth trong tương lai gần để chuẩn bị tài nguyên.</p>
+                </div>
+                <div>
+                    <h3>⚙️ Tối ưu (Optimization)</h3>
+                    <p>Quyết định số lượng server tối ưu dựa trên dự báo, cân bằng giữa Hiệu năng (Performance) và Chi phí (Cost).</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="slide-footer">
+            <span>Tổng quan giải pháp</span>
+            <span>Slide 3</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: DATASET -->
+    <div class="slide">
+        <h2>Dataset - NASA HTTP Log</h2>
+        <div class="grid-2">
+            <div>
+                <div class="card">
+                    <h3>📁 Thông tin dữ liệu</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 10px;">🏷️ <strong>Nguồn:</strong> NASA Kennedy Space Center</li>
+                        <li style="margin-bottom: 10px;">📅 <strong>Thời gian:</strong> Tháng 7 - Tháng 8/1995</li>
+                        <li style="margin-bottom: 10px;">📊 <strong>Số lượng:</strong> ~1.9 triệu requests</li>
+                        <li style="margin-bottom: 10px;">📝 <strong>Định dạng:</strong> Apache Common Log Format</li>
+                    </ul>
+                </div>
+                
+                <h3 style="margin-top: 30px;">Các trường thông tin trích xuất</h3>
+                <table>
+                    <thead>
+                        <tr><th style="color:var(--primary)">Trường</th><th style="color:var(--primary)">Mô tả</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Timestamp</td><td>Thời điểm request</td></tr>
+                        <tr><td>Host</td><td>IP/Hostname client</td></tr>
+                        <tr><td>Method</td><td>GET, POST, v.v.</td></tr>
+                        <tr><td>Status</td><td>Mã phản hồi HTTP (Code)</td></tr>
+                        <tr><td>Bytes</td><td>Kích thước phản hồi</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <h3>📝 Định dạng Log thô</h3>
+                <div class="terminal" style="font-size: 0.8rem; margin-bottom: 10px; color: #a7f3d0;">
+                    199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] <br>
+                    "GET /history/apollo/ HTTP/1.0" 200 6245
+                </div>
+                
+                <div class="card danger" style="padding: 15px;">
+                    <h3 style="color: var(--danger); margin-top: 0; font-size: 1.2rem;">⚠️ Khoảng trống dữ liệu #1 (Cuối T7)</h3>
+                    <p style="font-size: 0.9rem;"><strong>28/Jul 13:32</strong> → <strong>01/Aug 00:00</strong></p>
+                    <p style="font-size: 0.85rem; margin-top: 5px;">Thời lượng: ~82 giờ (~3.5 ngày)</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Nguyên nhân: Không rõ (Log rotation?)</p>
+                </div>
+                
+                <div class="card danger" style="padding: 15px;">
+                    <h3 style="color: var(--danger); margin-top: 0; font-size: 1.2rem;">⚠️ Khoảng trống dữ liệu #2 (Bão)</h3>
+                    <p style="font-size: 0.9rem;"><strong>01/Aug 14:52</strong> → <strong>03/Aug 04:36</strong></p>
+                    <p style="font-size: 0.85rem; margin-top: 5px;">Thời lượng: ~37.7 giờ</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Nguyên nhân: Server down do bão Erin</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Dataset</span>
+            <span>Slide 4</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: EDA - Traffic Patterns -->
+    <div class="slide">
+        <h2>EDA - Phân tích mô hình lưu lượng</h2>
+        <div class="eda-grid" style="gap: 12px;">
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/01_overall_traffic.png" alt="Traffic Overview" onerror="this.src='https://via.placeholder.com/380x180?text=01_overall_traffic.png'" style="max-height: 170px;">
+                <p style="font-size: 0.8rem; margin-top: 5px;">📊 Tổng quan Traffic theo thời gian</p>
+            </div>
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/02_daily_pattern.png" alt="Daily Pattern" onerror="this.src='https://via.placeholder.com/380x180?text=02_daily_pattern.png'" style="max-height: 170px;">
+                <p style="font-size: 0.8rem; margin-top: 5px;">⏰ Pattern theo giờ trong ngày</p>
+            </div>
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/03_weekly_pattern.png" alt="Weekly Pattern" onerror="this.src='https://via.placeholder.com/380x180?text=03_weekly_pattern.png'" style="max-height: 170px;">
+                <p style="font-size: 0.8rem; margin-top: 5px;">📅 Pattern theo ngày trong tuần</p>
+            </div>
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/04_distribution.png" alt="Distribution" onerror="this.src='https://via.placeholder.com/380x180?text=04_distribution.png'" style="max-height: 170px;">
+                <p style="font-size: 0.8rem; margin-top: 5px;">📈 Phân phối Request/Bytes</p>
+            </div>
+        </div>
+        <div class="card highlight" style="margin-top: 15px; padding: 15px;">
+            <p style="font-size: 0.95rem; margin: 0;"><strong>🔍 Điểm nhấn (Insight):</strong> Traffic đạt đỉnh 9h sáng - 5h chiều EST, ngày thường > cuối tuần. Có các điểm đột biến (spike) cần xử lý.</p>
+        </div>
+        <div class="slide-footer">
+            <span>EDA - Patterns</span>
+            <span>Slide 5</span>
+        </div>
+    </div>
+
+
+    <!-- SLIDE 6: EDA - Anomalies & Missing Data -->
+    <div class="slide">
+        <h2>EDA - Khoảng trống dữ liệu & Chất lượng</h2>
+        <div class="eda-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/05_status_codes.png" alt="Status Codes" onerror="this.src='https://via.placeholder.com/300x150?text=Status+Codes'" style="max-height: 140px;">
+                <p style="font-size: 0.75rem; margin-top: 5px;">📊 Mã trạng thái HTTP</p>
+            </div>
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/06_spike_detection.png" alt="Spike Detection" onerror="this.src='https://via.placeholder.com/300x150?text=Spike+Detection'" style="max-height: 140px;">
+                <p style="font-size: 0.75rem; margin-top: 5px;">⚠️ Phát hiện đột biến (Spike)</p>
+            </div>
+            <div class="eda-item" style="padding: 8px;">
+                <img src="outputs/eda/01_overall_traffic.png" alt="Overall Traffic" onerror="this.src='https://via.placeholder.com/300x150?text=Overall+Traffic'" style="max-height: 140px;">
+                <p style="font-size: 0.75rem; margin-top: 5px;">📈 Tổng quan Traffic</p>
+            </div>
+        </div>
+        
+        <div class="grid-2" style="margin-top: 15px; height: auto; gap: 20px;">
+            <div class="card danger" style="padding: 15px;">
+                <h3 style="color: var(--danger); margin-top: 0; font-size: 1.1rem;">⚠️ 2 Khoảng mất dữ liệu</h3>
+                <table style="font-size: 0.8rem; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 5px;">Gap</th>
+                            <th style="padding: 5px;">Giai đoạn</th>
+                            <th style="padding: 5px;">Thời lượng</th>
+                            <th style="padding: 5px;">Nguyên nhân</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 5px;"><strong>#1</strong></td>
+                            <td style="padding: 5px;">28/Jul → 01/Aug</td>
+                            <td style="padding: 5px;">~82h</td>
+                            <td style="padding: 5px; color: var(--accent);">Không rõ
+                            
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>#2</strong></td>
+                            <td style="padding: 5px;">01/Aug → 03/Aug</td>
+                            <td style="padding: 5px;">~38h</td>
+                            <td style="padding: 5px; color: var(--accent);">Bão</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted);">📌 Tổng thời gian mất dữ liệu: ~120h (~5 ngày)</p>
+            </div>
+            <div class="card success" style="padding: 15px;">
+                <h3 style="color: var(--success); margin-top: 0; font-size: 1.1rem;">✅ Cách xử lý</h3>
+                <ul style="font-size: 0.85rem; margin-left: 15px; line-height: 1.6;">
+                    <li>Đánh dấu <code>is_outage=1</code> cho cả hai khoảng thời gian</li>
+                    <li>Không dùng khoảng thời gian này để train (trừ khoảng không rõ nguyên nhân)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>EDA - Chất lượng dữ liệu</span>
+            <span>Slide 6</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 6.5: DDoS ANALYSIS -->
+    <div class="slide">
+        <h2>🛡️ Phân tích DDoS & Bất thường</h2>
+        
+        <div class="grid-2">
+            <div>
+                <div class="card success" style="margin-bottom: 20px;">
+                    <h3 style="color: var(--success); margin-top: 0;">✅ Kết luận: KHÔNG có DDoS lớn</h3>
+                    <p>Dataset NASA logs là dữ liệu vận hành sạch, không có dấu hiệu tấn công DDoS đáng kể.</p>
+                </div>
+                
+                <div class="card highlight">
+                    <h3 style="margin-top: 0;">🚀 Đột biến Traffic - 13/07/1995</h3>
+                    <table style="font-size: 0.85rem;">
+                        <tr><td>Giờ cao điểm:</td><td><strong>09:00 AM</strong></td></tr>
+                        <tr><td>Số lượng Request:</td><td><strong>4,212 / 15phút</strong></td></tr>
+                        <tr><td>Tỷ lệ lỗi:</td><td><strong style="color: var(--success);">&lt;1%</strong></td></tr>
+                        <tr><td>Nguyên nhân:</td><td><strong style="color: var(--primary);">Phóng tàu STS-70 Discovery!</strong></td></tr>
+                    </table>
+                    <p style="font-size: 0.85rem; margin-top: 10px; color: var(--text-muted);">→ Traffic hợp lệ do sự kiện NASA Space Shuttle</p>
+                </div>
+            </div>
+            
+            <div>
+                <div class="card danger" style="margin-bottom: 20px;">
+                    <h3 style="color: var(--danger); margin-top: 0;">⚠️ Bất thường nhỏ - 06-07/08/1995</h3>
+                    <table style="font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 5px;">Thời điểm</th>
+                                <th style="padding: 5px;">Requests</th>
+                                <th style="padding: 5px;">Error Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 5px;">06/08 02:45</td>
+                                <td style="padding: 5px;">245</td>
+                                <td style="padding: 5px; color: var(--danger);">26.1%</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px;">06/08 03:00</td>
+                                <td style="padding: 5px;">177</td>
+                                <td style="padding: 5px; color: var(--danger);">32.8%</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px;">07/08 02:15</td>
+                                <td style="padding: 5px;">334</td>
+                                <td style="padding: 5px; color: var(--danger);">26.9%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-muted);">📌 Có thể do: web crawler, link hỏng, hoặc rà quét nhỏ</p>
+                </div>
+                
+                <div class="card" style="background: rgba(0,0,0,0.2);">
+                    <h3 style="margin-top: 0;">📊 Tiêu chí phát hiện DDoS</h3>
+                    <ul style="font-size: 0.85rem; margin-left: 15px;">
+                        <li>Traffic cao + Tỷ lệ lỗi cao → DDoS</li>
+                        <li>Traffic cao + Tỷ lệ lỗi thấp → <span style="color: var(--success);">Hợp lệ (Legitimate)</span></li>
+                        <li>Traffic thấp + Tỷ lệ lỗi cao → <span style="color: var(--accent);">Crawler/Scan</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="slide-footer">
+            <span>Phân tích DDoS</span>
+            <span>Slide 6.5</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: TRAIN/TEST SPLIT -->
+    <div class="slide">
+        <h2>Train/Test & Timeline</h2>
+        
+        <div style="display: flex; height: 80px; margin-top: 20px; border-radius: 8px; overflow: hidden; font-family: 'JetBrains Mono';">
+            <div style="flex: 7; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                TRAIN: 1/7 → 22/8
+            </div>
+            <div style="flex: 3; background: #06b6d4; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                TEST: 23/8 - 31/8
+            </div>
+        </div>
+        
+        <h3 style="margin-top: 40px;">⏱️ Lựa chọn Timeline (Time Window)</h3>
+        <div class="grid-3" style="margin-top: 20px;">
+            <div class="card" style="text-align: center; opacity: 0.6;">
+                <strong style="font-size: 1.5rem;">1 Phút</strong>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Quá nhiều nhiễu (Noise)<br>Khó dự báo xu hướng</p>
+            </div>
+            <div class="card highlight" style="text-align: center; border: 2px solid var(--success);">
+                <strong style="font-size: 1.5rem; color: var(--success);">5 Phút ✓</strong>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Cân bằng hoàn hảo giữa<br>độ chính xác & độ mượt</p>
+            </div>
+            <div class="card" style="text-align: center; opacity: 0.6;">
+                <strong style="font-size: 1.5rem;">15 Phút</strong>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Quá thô (Too coarse)<br>Bỏ lỡ các đợt spike ngắn</p>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 40px;">Đoạn mã xử lý</h3>
+        <div class="terminal">
+<span style="color: #c084fc">pattern</span> = <span style="color: #fcd34d">r'^(\S+) \S+ \S+ \[([^\]]+)\] "([^"]*)" (\d+) (\S+)$'</span>
+<span style="color: #64748b"># Logic Resample</span>
+df_resampled = df.set_index(<span style="color: #a5f3fc">'timestamp'</span>).resample(<span style="color: #a5f3fc">'5T'</span>).agg({...})
+        </div>
+
+        <div class="slide-footer">
+            <span>Phương pháp luận</span>
+            <span>Slide 7</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: MODELS -->
+    <div class="slide">
+        <h2>Kiến trúc mô hình dự báo</h2>
+        <div class="grid-2">
+            <div class="card highlight" style="border: 2px solid var(--success);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="color: var(--success); font-size: 1.8rem; margin-top: 0;">XGBoost ⭐</h3>
+                    <span class="tag" style="background: var(--success); color: white;">QUÁN QUÂN</span>
+                </div>
+                <p style="color: var(--secondary); font-family: monospace;">Gradient Boosted Decision Trees</p>
+                <div style="margin: 20px 0; border-top: 1px solid var(--success);"></div>
+                <ul>
+                    <li><strong>Ưu điểm:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Xử lý tốt các mẫu phi tuyến tính</li>
+                            <li>Độ quan trọng của đặc trưng rõ ràng</li>
+                            <li>Mạnh mẽ với các điểm ngoại lai (Outliers)</li>
+                        </ul>
+                    </li>
+                    <li style="margin-top: 10px;"><strong>Features sử dụng:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Lag features (t-1, t-2, ...)</li>
+                            <li>Thống kê trượt (Rolling statistics)</li>
+                            <li>Đặc trưng thời gian (giờ, ngày trong tuần)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="color: var(--primary); font-size: 1.8rem; margin-top: 0;">Prophet</h3>
+                    <span class="tag tag-blue">Meta / Facebook</span>
+                </div>
+                <p style="color: var(--secondary); font-family: monospace;">Mô hình hồi quy cộng tính</p>
+                <div style="margin: 20px 0; border-top: 1px solid var(--primary);"></div>
+                <ul>
+                    <li><strong>Ưu điểm:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Xử lý đa tính mùa vụ (Multiple seasonality)</li>
+                            <li>Tự động xử lý Outliers</li>
+                            <li>Các thành phần dễ giải thích</li>
+                        </ul>
+                    </li>
+                    <li style="margin-top: 10px;"><strong>Thành phần:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Xu hướng (Trend) + Mùa vụ (Seasonality) + Lễ</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Mô hình</span>
+            <span>Slide 8</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: EVALUATION RESULTS -->
+    <div class="slide">
+        <h2>Kết quả đánh giá (Cửa sổ 5 phút)</h2>
+        
+        <div class="grid-2">
+            <div>
+                <h3>📊 Dự báo Request</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Chỉ số</th>
+                            <th>Prophet</th>
+                            <th style="color: var(--success);">XGBoost ⭐</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>RMSE</td>
+                            <td>86.63</td>
+                            <td class="winner">43.13</td>
+                        </tr>
+                        <tr>
+                            <td>MAE</td>
+                            <td>63.80</td>
+                            <td class="winner">32.36</td>
+                        </tr>
+                        <tr style="background: rgba(16, 185, 129, 0.1);">
+                            <td><strong>MAPE</strong></td>
+                            <td>45.05%</td>
+                            <td class="winner">25.83%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="margin-top: 15px; font-size: 0.9rem; color: var(--text-muted);">*MAPE: Sai số phần trăm tuyệt đối trung bình (Thấp hơn là tốt hơn)</p>
+            </div>
+
+            <div>
+                 <h3>📊 Dự báo Băng thông (Bandwidth)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Chỉ số</th>
+                            <th>Prophet</th>
+                            <th style="color: var(--success);">XGBoost ⭐</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>RMSE</td>
+                            <td>1.68M</td>
+                            <td class="winner">1.17M</td>
+                        </tr>
+                        <tr>
+                            <td>MAE</td>
+                            <td>1.24M</td>
+                            <td class="winner">894K</td>
+                        </tr>
+                        <tr style="background: rgba(16, 185, 129, 0.1);">
+                            <td><strong>MAPE</strong></td>
+                            <td>53.95%</td>
+                            <td class="winner">39.15%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="card success" style="margin-top: 20px;">
+                    <strong>🏆 Quan sát:</strong>
+                    <p>XGBoost vượt trội hơn Prophet ~50% chỉ số MAPE. Lag features và rolling statistics nắm bắt các mô hình dữ liệu tốt hơn.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="slide-footer">
+            <span>Đánh giá</span>
+            <span>Slide 9</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: MODEL PERFORMANCE VISUALIZATION -->
+    <div class="slide">
+        <h2>Hiệu năng mô hình & Insight</h2>
+        <div class="grid-2">
+            <div>
+                <div class="eda-item" style="margin-bottom: 15px;">
+                    <img src="outputs/eda/07_train_test_split.png" alt="Train Test Split" onerror="this.src='https://via.placeholder.com/450x220?text=Train+Test+Split'" style="max-height: 200px; width: 100%;">
+                    <p style="font-size: 0.85rem;">📊 Trực quan hóa Train/Test</p>
+                </div>
+                <div class="card highlight" style="padding: 15px;">
+                    <h3 style="margin-top: 0; font-size: 1.1rem;">🎯 Hiệu năng XGBoost</h3>
+                    <table style="font-size: 0.85rem;">
+                        <tr><td>Giai đoạn Test:</td><td><strong>23/8 - 31/8/1995</strong></td></tr>
+                        <tr><td>MAPE (Requests):</td><td><strong style="color: var(--success);">25.83%</strong></td></tr>
+                        <tr><td>MAPE (Bytes):</td><td><strong style="color: var(--success);">39.15%</strong></td></tr>
+                        <tr><td>Cải thiện so với Prophet:</td><td><strong style="color: var(--accent);">~50%</strong></td></tr>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <div class="card success" style="margin-bottom: 15px; padding: 20px;">
+                    <h3 style="color: var(--success); margin-top: 0;">🏆 Tại sao XGBoost thắng?</h3>
+                    <ul style="font-size: 0.9rem; margin-left: 15px; line-height: 1.8;">
+                        <li><strong>Lag Features:</strong> Nắm bắt các mẫu ngắn hạn (t-1, t-12)</li>
+                        <li><strong>Rolling Stats:</strong> Làm mượt nhiễu, phát hiện xu hướng</li>
+                        <li><strong>Time Features:</strong> Mã hóa giờ, ngày trong tuần</li>
+                        <li><strong>Phi tuyến tính:</strong> Xử lý tốt các mẫu traffic phức tạp</li>
+                    </ul>
+                </div>
+                <div class="card" style="padding: 15px; background: rgba(0,0,0,0.2);">
+                    <h3 style="margin-top: 0; font-size: 1.1rem;">📉 Hạn chế của Prophet</h3>
+                    <ul style="font-size: 0.85rem; margin-left: 15px; line-height: 1.6;">
+                        <li>Giả định tính mùa vụ cộng (additive seasonality)</li>
+                        <li>Kém hiệu quả với các đợt tăng đột ngột (spikes)</li>
+                        <li>Không tận dụng được lag features</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="card highlight" style="margin-top: 15px; padding: 15px;">
+            <p style="margin: 0;"><strong>📈 Key Insight:</strong> XGBoost với lag features và rolling statistics nắm bắt được cả mẫu hình hàng ngày (daily patterns) và các đột biến bất ngờ, giúp giảm MAPE ~50% so với Prophet.</p>
+        </div>
+        <div class="slide-footer">
+            <span>Model Insights</span>
+            <span>Slide 10</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: AUTOSCALER ALGORITHM -->
+    <div class="slide">
+        <h2>Thuật toán AutoScaler</h2>
+        <div class="grid-2">
+            <div>
+                <div class="card highlight">
+                    <h3>Quy trình mở rộng dự báo</h3>
+                    <ol style="margin-left: 20px; line-height: 1.8;">
+                        <li>Nhận dự báo traffic từ XGBoost</li>
+                        <li>Tính số server cần thiết: <br><code>servers = ⌈predicted / 1000⌉</code></li>
+                        <li>Kiểm tra thời gian <strong>Cooldown</strong></li>
+                        <li>Áp dụng ngưỡng trễ <strong>Hysteresis</strong></li>
+                        <li>Thực thi hành động Scaling</li>
+                    </ol>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px dashed var(--secondary);">
+                    <p style="margin: 0 0 10px 0; color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem;">Cấu hình (Configuration)</p>
+                    <code style="display:block; margin-bottom: 5px;">capacity_per_server: 1000 req/min</code>
+                    <code style="display:block; margin-bottom: 5px;">scale_up_threshold: 80%</code>
+                    <code style="display:block;">cooldown_period: 5 min</code>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 15px;">
+                <div class="card success" style="text-align: center;">
+                    <h3 style="color: var(--success); margin: 0;">⬆️ Scale Up (Mở rộng)</h3>
+                    <p>Khi tải dự báo > 80% sức chứa</p>
+                </div>
+                
+                <div style="text-align: center; padding: 10px; color: var(--text-muted);">
+                    ⬇️ ⬆️<br>
+                    <strong>Vùng đệm Hysteresis</strong><br>
+                    <span style="font-size: 0.9rem;">(40-80% - giữ nguyên số servers)</span>
+                </div>
+                
+                <div class="card danger" style="text-align: center;">
+                    <h3 style="color: var(--danger); margin: 0;">⬇️ Scale Down (Thu hẹp)</h3>
+                    <p>Khi tải dự báo < 40% sức chứa</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Thuật toán</span>
+            <span>Slide 11</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: COST EFFICIENCY -->
+    <div class="slide">
+        <h2>Hiệu quả chi phí & Tiết kiệm</h2>
+        
+        <div class="grid-2" style="margin-bottom: 30px;">
+            <div class="card" style="background: linear-gradient(135deg, #1e293b, #334155);">
+                <h3>📊 Cơ sở (Cố định 10 Servers)</h3>
+                <p>Chạy cố định 10 servers 24/7</p>
+                <div style="margin-top: 15px; font-size: 2.5rem; font-weight: 800; color: #cbd5e1;">$3,240/tháng</div>
+                <p style="color: var(--danger); margin-top: 10px;">⚠️ Lãng phí khi traffic thấp</p>
+            </div>
+
+            <div class="card" style="background: linear-gradient(135deg, #064e3b, #065f46); border: 1px solid #10b981;">
+                <h3>🤖 AI AutoScaling</h3>
+                <p>Scale động theo dự báo của XGBoost</p>
+                <div style="margin-top: 15px; font-size: 2.5rem; font-weight: 800; color: #34d399;">$510/tháng</div>
+                <div style="background: #fff; color: #064e3b; display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-top: 10px; font-size: 1.2rem;">🎉 Tiết kiệm 84.3%</div>
+            </div>
+        </div>
+
+        <div class="card highlight" style="text-align: center; padding: 30px;">
+            <h3 style="color: var(--accent); font-size: 2rem; margin: 0;">💰 Tiết kiệm: $2,730/tháng (~$32,760/năm)</h3>
+        </div>
+
+        <div class="grid-2" style="height: auto; margin-top: 20px;">
+            <div class="card">
+                <h3>📋 Giả định tính toán</h3>
+                <ul style="font-size: 0.95rem; margin-left: 15px;">
+                    <li>Server: $0.045/giờ (AWS t3.medium)</li>
+                    <li>Sức chứa: 1000 req/phút/server</li>
+                    <li>Thời gian Scale: 2 phút (đã pre-provision)</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <h3 style="color: var(--success);">✅ Kết luận</h3>
+                <p>AI-based AutoScaling có thể giảm <strong>84%+ chi phí</strong> hạ tầng (infrastructure) trong khi vẫn đảm bảo hiệu năng.</p>
+            </div>
+        </div>
+        
+        <div class="slide-footer">
+            <span>Phân tích chi phí</span>
+            <span>Slide 12</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: TECH STACK -->
+    <div class="slide">
+        <h2>Công nghệ & Cấu trúc dự án</h2>
+        <div class="grid-2">
+            <div>
+                <h3>Backend & ML</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                    <span class="tag" style="background: #3776ab; color: white;">Python 3.10+</span>
+                    <span class="tag" style="background: #eab308; color: black;">Pandas</span>
+                    <span class="tag" style="background: #009688; color: white;">FastAPI</span>
+                    <span class="tag" style="background: #ff6600; color: white;">XGBoost</span>
+                    <span class="tag" style="background: #f43f5e; color: white;">Prophet</span>
+                </div>
+                
+                <h3>Frontend & Visualization</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <span class="tag" style="background: #e44d26; color: white;">HTML5/CSS3</span>
+                    <span class="tag" style="background: #f7df1e; color: black;">JavaScript</span>
+                    <span class="tag" style="background: #ff6384; color: white;">Chart.js</span>
+                    <span class="tag" style="background: #ff4b4b; color: white;">Streamlit</span>
+                </div>
+                
+                <h3 style="margin-top: 20px;">Các tính năng đã triển khai</h3>
+                <ul style="font-size: 0.95rem; margin-left: 15px;">
+                    <li>✅ Data Pipeline (1.8M bản ghi)</li>
+                    <li>✅ Model XGBoost + Prophet</li>
+                    <li>✅ REST API <code>/forecast</code>, <code>/recommend-scaling</code></li>
+                    <li>✅ Dashboard Frontend</li>
+                    <li>✅ Tài liệu Swagger</li>
+                </ul>
+            </div>
+            
+            <div class="card" style="font-family: 'JetBrains Mono'; font-size: 0.85rem; padding: 20px; color: #a3a3a3;">
+                <p style="color: white; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">📁 Cấu trúc thư mục dự án</p>
+                autoscaling/<br>
+                ├── src/           <span style="color: #555;"># Pipeline dữ liệu & model</span><br>
+                │   ├── data_pipeline.py<br>
+                │   ├── model_trainer.py<br>
+                │   └── eda.py<br>
+                ├── frontend/      <span style="color: #555;"># Dashboard HTML/CSS/JS</span><br>
+                ├── dashboard/     <span style="color: #555;"># UI Streamlit (thay thế)</span><br>
+                ├── outputs/eda/   <span style="color: #555;"># Biểu đồ EDA</span><br>
+                ├── saved_models/  <span style="color: #555;"># Model đã train</span><br>
+                ├── app.py         <span style="color: #555;"># Backend FastAPI</span><br>
+                └── run_demo.bat   <span style="color: #555;"># Chạy demo 1 chạm</span>
+            </div>
+        </div>
+        <div class="slide-footer">
+            <span>Kiến trúc</span>
+            <span>Slide 13</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: CONCLUSION -->
+    <div class="slide">
+        <h2>Kết luận & Hướng phát triển</h2>
+        
+        <div class="grid-2" style="margin-bottom: 20px;">
+            <div class="card highlight">
+                <h3>✅ Thành tựu chính</h3>
+                <ul style="font-size: 1rem; margin-left: 20px; line-height: 2;">
+                    <li>Pipeline End-to-end: Raw Log → Hành động Scale</li>
+                    <li>XGBoost MAPE: <strong>25.83%</strong> (Requests)</li>
+                    <li>Tiết kiệm chi phí: <strong>84.3%</strong> ($2,730/tháng)</li>
+                    <li>API Production-ready + Dashboard</li>
+                    <li>Tài liệu đầy đủ + Swagger</li>
+                </ul>
+            </div>
+            <div class="card" style="border: 1px dashed var(--accent);">
+                <h3 style="color: var(--accent);">🚀 Hướng phát triển tương lai</h3>
+                <ul style="font-size: 1rem; margin-left: 20px; line-height: 2;">
+                    <li>Dùng LSTM/Transformer cho các mẫu phức tạp hơn</li>
+                    <li>Xử lý luồng thời gian thực (Real-time streaming) với Kafka/Spark</li>
+                    <li>Hỗ trợ Multi-region scaling</li>
+                    <li>Tích hợp trực tiếp với API nhà cung cấp Cloud</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card success" style="text-align: center; padding: 25px;">
+            <h3 style="color: var(--success); font-size: 1.5rem; margin: 0 0 10px 0;">🎯 Thông điệp cốt lõi</h3>
+            <p style="font-size: 1.2rem; color: var(--text-main);">AI-powered AutoScaling không chỉ giảm chi phí mà còn đảm bảo <strong>hiệu năng (performance)</strong> và <strong>độ tin cậy (reliability)</strong> cho hệ thống Cloud Infrastructure.</p>
+        </div>
+        
+        <div class="slide-footer">
+            <span>Kết luận</span>
+            <span>Slide 14</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 15: Q&A -->
+    <div class="slide flex-center" style="flex-direction: column; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); text-align: center;">
+        <h1 style="font-size: 6rem; margin-bottom: 20px;">Q & A</h1>
+        <p style="font-size: 2rem; color: var(--text-muted);">Cảm ơn Ban Giám Khảo!</p>
+        
+        <div style="margin-top: 50px; text-align: left; background: rgba(255,255,255,0.05); padding: 30px 50px; border-radius: 16px;">
+            <p>
+                <span style="color: var(--primary);">🏆 Team:</span> Kề Vibe sát Code
+            </p>
+        </div>
+        <div class="slide-footer">
+            <span>Kết thúc</span>
+            <span>Slide 15</span>
+        </div>
+    </div>
+
+</body>
+</html>
